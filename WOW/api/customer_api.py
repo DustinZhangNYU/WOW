@@ -1,3 +1,4 @@
+from flask import jsonify
 from config import *
 
 '''
@@ -20,11 +21,11 @@ If the vehicle is already rented, it should be updated in the backend side
     Update customer's borrowed car record, to trace, customer rent this car from which office on which date,..., 
     (这个追踪未完成订单的表我们database里还没有), 在代码里先暂时命名为 SJD_NOT_FINISHED_ORDER,这个表主键应该是（customer_id,vin）
 '''
-from flask import jsonify
 
 # following codes should be in the backend folder and doesn't need to interact with frontend
 # start_odometer and daily_odometer_limit should be predefined in the database - no interaction with customer
 # - Siya Guo, 04/22
+
 
 @app.route('/Api/Pickup', methods=['POST'])
 def pickup():
@@ -97,11 +98,13 @@ def compare_time(l_time, start_t, end_t):
 #
 # - Siya Guo, 04/22
 
+
 @app.route('/Api/Dropoff', methods=['POST'])
 def dropoff():
     data = request.get_json()
     cust_id = data['cust_customer_id']
-    res = db.get_one("SJD_NOT_FINISHED_ORDER", "vin", "cust_customer_id = " + cust_id)
+    res = db.get_one("SJD_NOT_FINISHED_ORDER", "vin",
+                     "cust_customer_id = " + cust_id)
     vin_val = "'" + res['vin'] + "'"
     # vin_val = "'" + data['vin'] + "'"
     cur_date = datetime.datetime.now().strftime('%Y-%m-%d')
@@ -118,20 +121,25 @@ def dropoff():
     # Corporate user will use company coupon automatically
     use_corp_coupon = "NULL"
     check_cust_type = True
-    res = db.get_one("SJD_CUSTOMER", "cust_cust_type", "cust_customer_id = " + cust_id)
+    res = db.get_one("SJD_CUSTOMER", "cust_cust_type",
+                     "cust_customer_id = " + cust_id)
     if res['cust_cust_type'] == 'C':
         check_cust_type = False
-        res = db.get_one("SJD_CORP_CUSTOMER", "coupon_id", "cust_customer_id = " + cust_id)
+        res = db.get_one("SJD_CORP_CUSTOMER", "coupon_id",
+                         "cust_customer_id = " + cust_id)
         use_corp_coupon = res['coupon_id']
 
     use_coupon = data['coupon_id']
     if len(use_coupon) != 0 and check_cust_type == True:
         # Individual customer choose to use a coupon
-        ctype = db.get_one("SJD_COUPON", "coupon_type", "coupon_id = " + use_coupon)
+        ctype = db.get_one("SJD_COUPON", "coupon_type",
+                           "coupon_id = " + use_coupon)
         if ctype['coupon_type'] == 'I':
             # This is an individual coupon
-            res = db.get_one("SJD_IND_COUPON", "expiration_date,start_date", "coupon_id = " + use_coupon)
-            check_date = compare_time(str(cur_date), str(res['start_date']), str(res['expiration_date']))
+            res = db.get_one(
+                "SJD_IND_COUPON", "expiration_date,start_date", "coupon_id = " + use_coupon)
+            check_date = compare_time(str(cur_date), str(
+                res['start_date']), str(res['expiration_date']))
             # if check_date == True:
             # Because this coupon is used, thus delete it from database
             # db.delete_row("SJD_IND_COUPON","coupon_id = "+use_coupon)
@@ -147,9 +155,11 @@ def dropoff():
     query_result = db.get_sql_res(sql)
     order_id = query_result[0]['count(*)'] + 1
 
-    res = db.get_one("SJD_NOT_FINISHED_ORDER", "*", "cust_customer_id = " + cust_id + " and vin = " + vin_val)
+    res = db.get_one("SJD_NOT_FINISHED_ORDER", "*",
+                     "cust_customer_id = " + cust_id + " and vin = " + vin_val)
     col_data = [str(order_id), "'" + str(res['pickup_date']) + "'", str(res['pickup_office_id']),
-                "'" + str(cur_date) + "'", str(res['start_odometer']), end_odometer, str(res['daily_odometer_limit']),
+                "'" + str(cur_date) + "'", str(res['start_odometer']
+                                               ), end_odometer, str(res['daily_odometer_limit']),
                 vin_val, dropoff_office, str(use_corp_coupon), use_coupon, cust_id]
     col_val = ','.join(col_data)
     db.insert_row("SJD_ORDER", col_val)
@@ -159,11 +169,14 @@ def dropoff():
     pay_id = query_result[0]['count(*)'] + 1
     pay_method = "'" + data['payment_method'] + "'"
     card_no = "'" + data['card_number'] + "'"
-    res = db.get_one("SJD_INVOICE", "invoice_id", "order_id = " + str(order_id))
-    col_data = [str(pay_id), "'" + str(cur_date) + "'", pay_method, card_no, str(res['invoice_id'])]
+    res = db.get_one("SJD_INVOICE", "invoice_id",
+                     "order_id = " + str(order_id))
+    col_data = [str(pay_id), "'" + str(cur_date) + "'",
+                pay_method, card_no, str(res['invoice_id'])]
     col_val = ','.join(col_data)
     last_id = db.insert_row("SJD_PAYMENT", col_val)
-    last_id = db.delete_row("SJD_NOT_FINISHED_ORDER", "cust_customer_id = " + cust_id + " and vin = " + vin_val)
+    last_id = db.delete_row("SJD_NOT_FINISHED_ORDER",
+                            "cust_customer_id = " + cust_id + " and vin = " + vin_val)
     return jsonify({'result': True})
 
 
@@ -181,12 +194,14 @@ def dropoff():
 
 # - Siya Guo, 04/22
 
+
 @app.route("/user-profile")
 # @app.route('/Api/FetchCustomer')
 def fetch_customer():
     data = request.get_json()
     cust_id = data['cust_customer_id']
-    res = db.get_one("SJD_CUSTOMER", "cust_cust_type", "cust_customer_id = " + cust_id)
+    res = db.get_one("SJD_CUSTOMER", "cust_cust_type",
+                     "cust_customer_id = " + cust_id)
     query_result = None
     if res['cust_cust_type'] == 'I':
         sql = "select * from SJD_CUSTOMER join SJD_IND_CUSTOMER using (cust_customer_id) where cust_customer_id = " + cust_id
@@ -203,6 +218,7 @@ def fetch_customer():
     If fetch error then return None
 '''
 
+
 @app.route("/user-profile")
 # @app.route('/Api/FetchCoupon')
 def fetch_coupon():
@@ -211,9 +227,11 @@ def fetch_coupon():
     data = request.get_json()
     # 感觉这个cust_id应该是customer 成功login的时候把登录时用的id存入一个后端变量里，否则用户随便在前端输入别人的id也可以查到别人的coupon信息
     cust_id = data['cust_customer_id']
-    res = db.get_one("SJD_CUSTOMER", "cust_cust_type", "cust_customer_id = " + cust_id)
+    res = db.get_one("SJD_CUSTOMER", "cust_cust_type",
+                     "cust_customer_id = " + cust_id)
     if res['cust_cust_type'] == 'C':
-        res = db.get_one("SJD_CORP_CUSTOMER", "coupon_id", "cust_customer_id = " + cust_id)
+        res = db.get_one("SJD_CORP_CUSTOMER", "coupon_id",
+                         "cust_customer_id = " + cust_id)
         sql = "select * from SJD_CORP_COUPON join SJD_COUPON using (coupon_id) where coupon_id = {}".format(
             str(res['coupon_id']))
         query_result = db.get_sql_res(sql)
@@ -227,17 +245,21 @@ def fetch_coupon():
     <where payment_id = ... --mandatory>
 '''
 
+
 @app.route("/user-profile")
 # @app.route('/Api/FetchPayment')
 def fetch_payment():
     data = request.get_json()
     cust_id = data['cust_customer_id']
-    orders = db.get_list("SJD_ORDER", "order_id", "cust_customer_id = {}".format(cust_id))
+    orders = db.get_list("SJD_ORDER", "order_id",
+                         "cust_customer_id = {}".format(cust_id))
     payments = []
     for i, row in enumerate(orders):
         cur_order_id = row['order_id']
-        invoice = db.get_one("SJD_INVOICE", "*", "order_id = {}".format(str(cur_order_id)))
-        cur_payments = db.get_list("SJD_PAYMENT", "*", "invoice_id = {}".format(str(invoice['invoice_id'])))
+        invoice = db.get_one("SJD_INVOICE", "*",
+                             "order_id = {}".format(str(cur_order_id)))
+        cur_payments = db.get_list(
+            "SJD_PAYMENT", "*", "invoice_id = {}".format(str(invoice['invoice_id'])))
         for p in cur_payments:
             payments.append(p)
     if len(payments) == 0:
@@ -250,12 +272,14 @@ def fetch_payment():
     <where customer_id = ... --mandatory>
 '''
 
+
 @app.route("/user-profile")
 # @app.route('/Api/FetchOrder')
 def fetch_order():
     data = request.get_json()
     cust_id = data['cust_customer_id']
-    orders = db.get_list("SJD_ORDER", "*", "cust_customer_id = {}".format(cust_id))
+    orders = db.get_list(
+        "SJD_ORDER", "*", "cust_customer_id = {}".format(cust_id))
     return jsonify(orders)
 
 
@@ -264,22 +288,23 @@ def fetch_order():
     <where invoice_id = ... --mandatory>
 '''
 
+
 @app.route("/user-profile")
 # @app.route('/Api/FetchInvoice')
 def fetch_invoice():
     data = request.get_json()
     cust_id = data['cust_customer_id']
-    orders = db.get_list("SJD_ORDER", "order_id", "cust_customer_id = {}".format(cust_id))
+    orders = db.get_list("SJD_ORDER", "order_id",
+                         "cust_customer_id = {}".format(cust_id))
     invoices = []
     for i, row in enumerate(orders):
         cur_order_id = row['order_id']
-        invoice = db.get_one("SJD_INVOICE", "*", "order_id = {}".format(cur_order_id))
+        invoice = db.get_one("SJD_INVOICE", "*",
+                             "order_id = {}".format(cur_order_id))
         invoices.append(invoice)
     if len(invoices) == 0:
         return None
     return jsonify(invoices)
-
-
 
 
 ###################### -- CUSTOMER UPDATE THEIR PERSONAL INFORMATION -- ######################
@@ -287,6 +312,7 @@ def fetch_invoice():
     Update customer's personal information
     This is update customer/ind_customer/corp_customer set ... <where customer_id = ... --mandatory>
 '''
+
 
 @app.route('/user-profile', methods=['POST'])
 # @app.route('/Api/UpdateCustomer', methods=['POST'])
@@ -342,7 +368,8 @@ def personal_cust_update():
         db.update_row("SJD_CUSTOMER", set, where)
         return jsonify({'result': True})
 
-    res = db.get_one("SJD_CUSTOMER", "cust_cust_type", "cust_customer_id = " + con_id)
+    res = db.get_one("SJD_CUSTOMER", "cust_cust_type",
+                     "cust_customer_id = " + con_id)
     if res['cust_cust_type'] == 'I':
         new_lastn = update_json['last_name']
         new_firstn = update_json['first_name']
@@ -378,10 +405,12 @@ def personal_cust_update():
         new_emp_id = update_json['emp_id']
         if len(new_corp_name) != 0:
             new_corp_name = "'" + new_corp_name + "'"
-            res = db.get_one("SJD_CORP_COUPON", "*", "company_name = " + new_corp_name)
+            res = db.get_one("SJD_CORP_COUPON", "*",
+                             "company_name = " + new_corp_name)
             if res != None:
                 new_coupon = res['coupon_id']
-                db.update_row("SJD_CORP_CUSTOMER", "coupon_id = " + str(new_coupon), where)
+                db.update_row("SJD_CORP_CUSTOMER",
+                              "coupon_id = " + str(new_coupon), where)
                 set = "corp_name=" + new_corp_name
             else:
                 # Updated corporate name doesn't exist in database

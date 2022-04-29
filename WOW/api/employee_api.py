@@ -15,6 +15,7 @@ from config import *
     This is select * from SJD_ORDER
 '''
 
+
 @app.route('/checkout')
 # not sure whether it is complete page or checkout page at the moment - Siya Guo, 04/22
 # @app.route('/Api/GetOrderList')
@@ -27,6 +28,7 @@ def order_fetchall():
     WOW employee fetch all individual customer information
     This is select * from SJD_IND_CUSTOMER
 '''
+
 
 @app.route('register')
 # get information from registration page? - Siya Guo, 04/22
@@ -58,10 +60,12 @@ def corp_cust_fetchall():
 # be operated by the backend automatically?
 # - Siya Guo, 04/22
 
+
 '''
     WOW employee fetch all individual coupon information
     This is select * from SJD_IND_COUPON
 '''
+
 
 @app.route('/Api/GetIndCouponList')
 def ind_coupon_fetchall():
@@ -94,6 +98,7 @@ def corp_coupon_fetchall():
 # there would be serious problems and I don't believe above operations are needed.
 # - Siya Guo, 04/22
 
+
 @app.route('/Api/GetPaymentList')
 def payment_fetchall():
     query_result = db.get_list('SJD_PAYMENT', '*')
@@ -118,6 +123,7 @@ def invoice_fetchall():
     Fetch c_id, over_m_f, rental_r, c_name from front-end
     Front-end use POST method send data to back-end api
 '''
+
 
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/InsertVehicleClass', methods=['POST'])
@@ -145,6 +151,7 @@ def vehicle_class_insert():
     This is insert into SJD_VEHICLES value(...)
 '''
 
+
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/InsertVehicle', methods=['POST'])
 def vehicle_insert():
@@ -156,7 +163,8 @@ def vehicle_insert():
     new_plt = "'" + new_data['lic_plt_num'] + "'"
     new_cid = new_data['class_id']
     new_office = new_data['office_id']
-    data = [new_make, new_model, new_year, new_vin, new_plt, new_cid, new_office]
+    data = [new_make, new_model, new_year,
+            new_vin, new_plt, new_cid, new_office]
     col_val = ','.join(data)
     table_name = "SJD_VEHICLES"
     try:
@@ -172,6 +180,7 @@ def vehicle_insert():
     This is insert into SJD_OFFICE value(...)
 '''
 
+
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/InsertOffice', methods=['POST'])
 def office_insert():
@@ -184,7 +193,8 @@ def office_insert():
     new_zip = "'" + new_data['add_zipcode'] + "'"
     new_ph = "'" + new_data['phone_number'] + "'"
     new_ci = "'" + new_data['add_city'] + "'"
-    data = [new_id, new_cou, new_st, new_str, new_unit, new_zip, new_ph, new_ci]
+    data = [new_id, new_cou, new_st, new_str,
+            new_unit, new_zip, new_ph, new_ci]
     col_val = ','.join(data)
     table_name = "SJD_OFFICE"
     try:
@@ -199,6 +209,7 @@ def office_insert():
     WOW employee add a new coupon record
     This is insert into SJD_COUPON value(...)
 '''
+
 
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/InsertCoupon', methods=['POST'])
@@ -251,6 +262,7 @@ def coupon_insert():
     Fetch con_id, con_omf,con_rental,con_name from front-end
 '''
 
+
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/DeleteVehicleClass', methods=['POST'])
 def vehicle_class_delete():
@@ -282,6 +294,7 @@ def vehicle_class_delete():
     WOW employee delete a vehicle
     This is delete SJD_VEHICLE <where(...)---optional>
 '''
+
 
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/DeleteVehicle', methods=['POST'])
@@ -328,6 +341,7 @@ def vehicle_delete():
     WOW employee delete an office
     This is delete SJD_OFFICE <where(...)---optional>
 '''
+
 
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/DeleteOffice', methods=['POST'])
@@ -381,6 +395,7 @@ def office_delete():
     Customer deletion is only based on customer_id column
 '''
 
+
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/DeleteCustomer', methods=['POST'])
 def customer_delete():
@@ -410,11 +425,13 @@ def customer_delete():
 # Deleting coupons should be done automatically after it is used or expired - no action required from employee
 # - Siya Guo, 04/22
 
+
 '''
     WOW employee delete a coupon
     This is delete SJD_COUPON <where(...)---optional>
     Coupon deletion is only based on coupon_id column
 '''
+
 
 @app.route('/Api/DeleteCoupon', methods=['POST'])
 def coupon_delete():
@@ -442,7 +459,6 @@ def coupon_delete():
         return jsonify({'result': False})
 
 
-
 ###################### -- EMPLOYEE  UPDATE -- ######################
 '''
     WOW employee update vehicle class information
@@ -450,6 +466,7 @@ def coupon_delete():
     But not support update class_id value(PK)
     Update only based on class_id
 '''
+
 
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/UpdateVehicleClass', methods=['POST'])
@@ -488,6 +505,7 @@ def vehicle_class_update():
     But not support update primary key column
     Update only based on vin
 '''
+
 
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/UpdateVehicle', methods=['POST'])
@@ -550,6 +568,7 @@ def vehicle_update():
     But not support update primary key column
     Update only based on office_id
 '''
+
 
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/UpdateOffice', methods=['POST'])
@@ -708,5 +727,3 @@ def corp_coupon_update():
     except Exception as ex:
         print(ex)
         return jsonify({'result': False})
-
-
