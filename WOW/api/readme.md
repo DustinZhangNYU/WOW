@@ -9,7 +9,7 @@ export FLASK_APP=config.py
 export FLASK_DEBUG=1
 flask run
 ```
-# Test json:
+# Test with postman:
 ## Login Test
 POST http://127.0.0.1:5000/login
 ```json
