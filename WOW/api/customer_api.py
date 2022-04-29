@@ -93,10 +93,11 @@ def compare_time(l_time, start_t, end_t):
 
 # Question: shouldn't the coupon be deleted from the database when the customer placed the order
 # instead of when returning the car?
-# I don't believe the NOT_FINISHED_ORDER is necessary - could add a separate page for the customer,
-# where the customer is logged in and can return the car, then we can only changed the rented attribute
-#
-# - Siya Guo, 04/22
+# I don't believe the NOT_FINISHED_ORDER is necessary
+# We don't send invoices to customers unless the rental service is completed.
+#Could add another column marking whether the order is finished or not according to actions by the customer
+# (has the customer returned the car or not)
+# - Siya Guo, 04/23
 
 
 @app.route('/Api/Dropoff', methods=['POST'])
