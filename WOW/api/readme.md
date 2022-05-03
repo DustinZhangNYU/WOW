@@ -30,6 +30,9 @@ POST http://127.0.0.1:5000/register
     "City": "Brooklyn",
     "State": "NY",
     "Country": "USA",
+    "MiddleName" :null,
+    "Ins_company_name" : "AAA",
+    "Ins_pol_num" : 12345,
     "Zipcode": 11201
 }
 ```
