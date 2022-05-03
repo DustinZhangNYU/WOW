@@ -142,7 +142,7 @@ def login():
         print("Password is incorrect")
         return resp
     else:
-        access_token = create_access_token(identity=email)
+        access_token = create_access_token(identity=cust_id)
         message = {"Status": "200", "message": "Successfully Login!",
                    "access_token": access_token}
         resp = jsonify(message)
@@ -242,3 +242,29 @@ def pickup():
     else:
         # This car is not available now
         return jsonify({'result': False})
+
+
+@app.route("/protected", methods=["GET"])
+@jwt_required()
+def protected():
+    # Access the identity of the current user with get_jwt_identity
+    current_user = get_jwt_identity()
+    return jsonify(logged_in_as=current_user), 200
+
+@app.route("/user-profile")
+# @app.route('/Api/FetchCustomer')
+@jwt_required()
+def fetch_customer():
+    data = request.get_json()
+    cust_id = get_jwt_identity()
+    sql = "Select cust_cust_type from SJD_CUSTOMER where cust_customer_id=%s"
+    db.cursor.execute(sql, cust_id)
+    res = db.cursor.fetchone()
+    query_result = None
+    if res['cust_cust_type'] == 'I':
+        sql = "select * from SJD_CUSTOMER join SJD_IND_CUSTOMER using (cust_customer_id) where cust_customer_id = " + cust_id
+        query_result = db.get_sql_res(sql)
+    if res['cust_cust_type'] == 'C':
+        sql = "select * from SJD_CUSTOMER join SJD_CORP_CUSTOMER using (cust_customer_id) where cust_customer_id = " + cust_id
+        query_result = db.get_sql_res(sql)
+    return jsonify(query_result)
