@@ -170,7 +170,10 @@ def register():
     state = request_data["State"]
     country = request_data["Country"]
     zipcode = request_data["Zipcode"]
-    sql = 'select cust_hash_password from sjd_customer where cust_email_address=%s'
+    ins_company_name = request_data["Ins_company_name"]
+    ins_pol_num = request_data["Ins_pol_num"]
+    middle_name = request_data["MiddleName"]
+    sql = 'select cust_hash_password from sjd_customer where cust_email_address = %s'
     hashpassword = generateSaltPassword(password)
     query = db.cursor.execute(sql, (email,))
     query_result = db.cursor.fetchone()
@@ -200,6 +203,30 @@ def register():
             message = {"Status": "400", "message": "Bad Data Insertion"}
             resp = jsonify(message)
             resp.status_code = 400
+            return resp
+        db.conn.commit()
+        sql = "select cust_customer_id from sjd_customer where cust_email_address=%s"
+        query = db.cursor.execute(sql, (email,))
+        query_result = db.cursor.fetchone()
+        cust_id = query_result["cust_customer_id"]
+        sql = "Insert INTO sjd_ind_customer (cust_customer_id,\
+            last_name,\
+            first_name,\
+            dri_lic_num,\
+            ins_com_name,\
+            ins_pol_num,\
+            middle_name)\
+            VALUES(%s,%s,%s,%s,%s,%s,%s)"
+        parameters = (cust_id, last_name, first_name, dln,
+                      ins_company_name, ins_pol_num, middle_name)
+        try:
+            db.cursor.execute(sql, parameters)
+        except Exception as ex:
+            print(ex)
+            message = {"Status": "400", "message": "Bad Data Insertion"}
+            resp = jsonify(message)
+            resp.status_code = 400
+            return resp
         db.conn.commit()
         message = {"Status": "200", "message": "Successfully Registered"}
         resp = jsonify(message)
@@ -251,6 +278,7 @@ def protected():
     current_user = get_jwt_identity()
     return jsonify(logged_in_as=current_user), 200
 
+
 @app.route("/user-profile")
 # @app.route('/Api/FetchCustomer')
 @jwt_required()
@@ -268,3 +296,10 @@ def fetch_customer():
         sql = "select * from SJD_CUSTOMER join SJD_CORP_CUSTOMER using (cust_customer_id) where cust_customer_id = " + cust_id
         query_result = db.get_sql_res(sql)
     return jsonify(query_result)
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    response = jsonify({"msg": "logout successful"})
+    unset_jwt_cookies(response)
+    return response
