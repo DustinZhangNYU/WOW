@@ -285,21 +285,51 @@ def protected():
 def fetch_customer():
     data = request.get_json()
     cust_id = get_jwt_identity()
-    sql = "Select cust_cust_type from SJD_CUSTOMER where cust_customer_id=%s"
+    sql = "Select cust_cust_type from sjd_customer where cust_customer_id=%s"
     db.cursor.execute(sql, cust_id)
     res = db.cursor.fetchone()
     query_result = None
     if res['cust_cust_type'] == 'I':
-        sql = "select * from SJD_CUSTOMER join SJD_IND_CUSTOMER using (cust_customer_id) where cust_customer_id = " + cust_id
-        query_result = db.get_sql_res(sql)
+        sql = "select * from sjd_customer join sjd_ind_customer using (cust_customer_id) where cust_customer_id=%s"
+        db.cursor.execute(sql, cust_id)
+        query_result = db.cursor.fetchall()
     if res['cust_cust_type'] == 'C':
-        sql = "select * from SJD_CUSTOMER join SJD_CORP_CUSTOMER using (cust_customer_id) where cust_customer_id = " + cust_id
-        query_result = db.get_sql_res(sql)
+        sql = "select * from sjd_customer join sjd_corp_customer using (cust_customer_id) where cust_customer_id=%s"
+        db.cursor.execute(sql, cust_id)
+        query_result = db.cursor.fetchall()
     return jsonify(query_result)
 
 
 @app.route("/logout", methods=["POST"])
+@jwt_required()
 def logout():
+    jti = get_jwt()["jti"]
+    now = datetime.datetime.now(datetime.timezone.utc)
+    formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
+    sql = "INSERT INTO sjd_jwt_revoked_token (token_val,\
+        token_date) \
+        VALUES (%s,%s)"
+    print(jti)
+    print(formatted_date)
+    try:
+        db.cursor.execute(sql, (jti, formatted_date))
+    except Exception as ex:
+        print(ex)
+        message = {"Status": "400", "message": "Bad Data Insertion"}
+        resp = jsonify(message)
+        resp.status_code = 400
+        return resp
+    db.session.commit()
     response = jsonify({"msg": "logout successful"})
     unset_jwt_cookies(response)
     return response
+
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
+    jti = jwt_payload["jti"]
+    sql = "Select token_id from sjd_jwt_revoked_token where token_val=%s"
+    db.cursor.execute(sql, (jti,))
+    token = db.cursor.fetchall()
+    print(token)
+    return token is None
