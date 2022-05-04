@@ -252,56 +252,68 @@ def generateSaltPassword(password):
     return hashed
 
 
-@app.route('/Api/Pickup', methods=['POST'])
+@app.route('/Pickup', methods=['POST'])
+@jwt_required()
 def pickup():
     data = request.get_json()
-    vin_val = "'" + data['vin'] + "'"
+    vin_val = data['vin']
+    cust_id = get_jwt_identity()
     select_col = "available, office_id"
-    where = "vin = " + vin_val
-    table_name = "SJD_VEHICLES"
-    query_result = db.get_one(table_name, select_col, where)
+    sql = "select available, office_id from sjd_vehicles where vin=%s"
+    query = db.cursor.execute(sql, (vin_val,))
+    query_result = db.cursor.fetchone()
     if query_result != None and query_result['available'] == 'Y':
         # This car is available now
-        set = "available = 'N'"
-        db.update_row(table_name, set, where)
+        sql = "Update sjd_vehicles set available = 'N' where vin=%s"
+        try:
+            db.cursor.execute(sql, (vin_val,))
+        except Exception as ex:
+            print(ex)
+            db.conn.rollback()
+            message = {"Status": "400", "message": "Bad Data Updating"}
+            resp = jsonify(message)
+            resp.status_code = 400
+            return resp
         pickup_office = query_result['office_id']
-        cust_id = data['cust_customer_id']
-        pickup_date = datetime.datetime.now().strftime('%Y-%m-%d')
+        pickup_date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         # Default start_odometers are zero
         start_odometer = 0
-        # 这是用户自己输入的吗？或者方便实现可以把所有订单的daily_odometer都设置成一个固定的值
+
         daily_odometer_limit = data['daily_odometer_limit']
 
         # 用一张另外的 SJD_NOT_FINISHED_ORDER 表先暂时几下谁在哪里什么时候租了哪台车，这台车此时的start_odometers和这个待完成订单的daily_odometer_limit值
-        col_data = [cust_id, str(pickup_office), "'" + str(pickup_date) + "'", vin_val, str(start_odometer),
-                    daily_odometer_limit]
-        col_val = ','.join(col_data)
-        last_rec_id = db.insert_row("SJD_NOT_FINISHED_ORDER", col_val)
-        return jsonify({'result': True})
+        sql = "Insert INTO sjd_not_finished_order (cust_customer_id,\
+            pickup_office_id,\
+            pickup_date,\
+            vin,\
+            start_odometer,\
+            daily_odometer_limit)\
+            VALUES (%s,%s,%s,%s,%s,%s)"
+        try:
+            print(vin_val)
+            db.cursor.execute(sql, (cust_id, str(pickup_office), str(
+                pickup_date), vin_val, str(start_odometer), daily_odometer_limit))
+        except Exception as ex:
+            print(ex)
+            db.conn.rollback()
+            message = {"Status": "400", "message": "Bad Data Insertion"}
+            resp = jsonify(message)
+            resp.status_code = 400
+            return resp
+        db.conn.commit()
+        message = {"Status": "200", "message": "Successfully Booked"}
+        resp = jsonify(message)
+        resp.status_code = 200
+        return resp
     else:
-        # This car is not available now
-        return jsonify({'result': False})
-
-
-@jwt.token_in_blocklist_loader
-def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
-    jti = jwt_payload["jti"]
-    sql = "Select token_id from sjd_jwt_revoked_token where token_val=%s"
-    db.cursor.execute(sql, (jti,))
-    token = db.cursor.fetchall()
-    return token is not None
-
-
-@app.route("/protected", methods=["GET"])
-@jwt_required()
-def protected():
-    # Access the identity of the current user with get_jwt_identity
-    current_user = get_jwt_identity()
-    return jsonify(logged_in_as=current_user), 200
+        message = {"Status": "400",
+                   "message": "Car doesn't exist or already booked"}
+        resp = jsonify(message)
+        resp.status_code = 400
+        return resp
 
 
 @app.route("/user-profile")
-# @app.route('/Api/FetchCustomer')
 @jwt_required()
 def fetch_customer():
     data = request.get_json()
