@@ -115,12 +115,24 @@ app.config["JWT_SECRET_KEY"] = "sjd_tandon_2022_APDB"
 jwt = JWTManager(app)
 
 
+# @jwt.token_in_blocklist_loader
+# def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
+#     jti = jwt_payload["jti"]
+#     sql = "Select token_id from sjd_jwt_revoked_token where token_val=%s"
+#     db.cursor.execute(sql, (jti,))
+#     token = db.cursor.fetchall()
+#     print(token is None)
+#     return False
+
+
 @app.route('/')
 def hello_world():
     return "<p>Hello, World!</p>"
 # Tables last id (used in concurrent)
 
 # Add a connection pool (used in concurrent)
+
+
 @app.route('/login', methods=["POST"])
 def login():
     email = request.json.get("email", None)
@@ -142,7 +154,7 @@ def login():
         print("Password is incorrect")
         return resp
     else:
-        access_token = create_access_token(identity=cust_id)
+        access_token = create_access_token(identity=cust_id, fresh=True)
         message = {"Status": "200", "message": "Successfully Login!",
                    "access_token": access_token}
         resp = jsonify(message)
@@ -271,6 +283,15 @@ def pickup():
         return jsonify({'result': False})
 
 
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
+    jti = jwt_payload["jti"]
+    sql = "Select token_id from sjd_jwt_revoked_token where token_val=%s"
+    db.cursor.execute(sql, (jti,))
+    token = db.cursor.fetchall()
+    return token is not None
+
+
 @app.route("/protected", methods=["GET"])
 @jwt_required()
 def protected():
@@ -309,8 +330,6 @@ def logout():
     sql = "INSERT INTO sjd_jwt_revoked_token (token_val,\
         token_date) \
         VALUES (%s,%s)"
-    print(jti)
-    print(formatted_date)
     try:
         db.cursor.execute(sql, (jti, formatted_date))
     except Exception as ex:
@@ -319,17 +338,7 @@ def logout():
         resp = jsonify(message)
         resp.status_code = 400
         return resp
-    db.session.commit()
+    db.conn.commit()
     response = jsonify({"msg": "logout successful"})
     unset_jwt_cookies(response)
     return response
-
-
-@jwt.token_in_blocklist_loader
-def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
-    jti = jwt_payload["jti"]
-    sql = "Select token_id from sjd_jwt_revoked_token where token_val=%s"
-    db.cursor.execute(sql, (jti,))
-    token = db.cursor.fetchall()
-    print(token)
-    return token is None
