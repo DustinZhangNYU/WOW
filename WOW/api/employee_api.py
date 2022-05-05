@@ -467,7 +467,6 @@ def coupon_delete():
     Update only based on class_id
 '''
 
-
 @app.route('/records', methods=['POST'])
 # @app.route('/Api/UpdateVehicleClass', methods=['POST'])
 def vehicle_class_update():

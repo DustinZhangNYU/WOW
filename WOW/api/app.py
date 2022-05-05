@@ -44,6 +44,7 @@ class SQLManager(object):
         self.conn = pool.get_conn()
         # self.conn = pymysql.connect(host = DB_CONFIG['host'],port = DB_CONFIG['port'],user = DB_CONFIG['user'],db = DB_CONFIG['db'],charset = DB_CONFIG['charset'])
         self.cursor = self.conn.cursor(cursor=pymysql.cursors.DictCursor)
+        self.conn.begin()
 
     # Fetch all rows from the select result
     def get_list(self, table_name, select_cols, where=None, args=None):
@@ -79,7 +80,6 @@ class SQLManager(object):
     def insert_row(self, table_name, col_value, args=None):
         sql = "Insert into " + table_name + " values (" + col_value + ");"
         self.cursor.execute(sql, args)
-        self.conn.commit()
         last_id = self.cursor.lastrowid
         return last_id
 
@@ -90,7 +90,6 @@ class SQLManager(object):
         else:
             sql = "Delete from " + table_name + ";"
         self.cursor.execute(sql, args)
-        self.conn.commit()
         last_id = self.cursor.lastrowid
         return last_id
 
@@ -279,7 +278,7 @@ def pickup():
         # Default start_odometers are zero
         start_odometer = 0
 
-        daily_odometer_limit = data['daily_odometer_limit']
+        daily_odometer_limit = 500
 
         # 用一张另外的 SJD_NOT_FINISHED_ORDER 表先暂时几下谁在哪里什么时候租了哪台车，这台车此时的start_odometers和这个待完成订单的daily_odometer_limit值
         sql = "Insert INTO sjd_not_finished_order (cust_customer_id,\
@@ -354,3 +353,139 @@ def logout():
     response = jsonify({"msg": "logout successful"})
     unset_jwt_cookies(response)
     return response
+
+
+@app.route('/Searchcar', method=['POST'])
+def searchCar():
+    data = request.get_json()
+    className = data["class_name"]
+    officeID = data["officeID"]
+    sql = "SELECT * from sjd_veh_class join sjd_vehicles using (class_id) where class_name =%s and office_id=%s and available='Y'"
+    db.cursor.execute(sql, (className, officeID))
+    result = db.cursor.fetchall()
+    return jsonify(result)
+
+
+@app.route('/Api/Dropoff', methods=['POST'])
+@jwt_required()
+def dropoff():
+    data = request.get_json()
+    cust_id = get_jwt_identity()
+    sql = "Select vin from SJD_NOT_FINISHED_ORDER where cust_customer_id=%s"
+    try:
+        db.cursor.execute(sql, (cust_id,))
+    except Exception as ex:
+        print(ex)
+        db.conn.rollback()
+        message = {"Status": "400", "message": "Cannot fetch the data"}
+        resp = jsonify(message)
+        resp.status_code = 400
+        return resp
+    vin_val = db.cursor.fetchone()
+    cur_date = datetime.datetime.now().strftime('%Y-%m-%d')
+    sql = "Update SJD_VEHICLES set available='Y' where vin=%s"
+
+    try:
+        db.cursor.execute(sql, (vin_val,))
+    except Exception as ex:
+        print(ex)
+        db.conn.rollback()
+        message = {"Status": "400", "message": "Bad Data Updating"}
+        resp = jsonify(message)
+        resp.status_code = 400
+        return resp
+    dropoff_office = data['dropoff_office_id']
+    sql = "Update SJD_VEHICLES set dropoff_office=%s where vin=%s"
+    try:
+        db.cursor.execute(sql, (vin_val, vin_val))
+    except Exception as ex:
+        print(ex)
+        db.conn.rollback()
+        message = {"Status": "400", "message": "Bad Data Updating"}
+        resp = jsonify(message)
+        resp.status_code = 400
+        return resp
+
+    # If this is a corporate type customer, then cannot use individual coupon, True: I, False: C
+    # Corporate user will use company coupon automatically
+    use_corp_coupon = "NULL"
+    check_cust_type = True
+    sql = "Select cust_cust_type from SJD_CUSTOMER where cust_customer_id=%s"
+    db.cursor.execute(sql, (cust_id,))
+    res = db.cursor.fetchone()
+    if res['cust_cust_type'] == 'C':
+        check_cust_type = False
+        sql = "Select coupon_id from SJD_CORP_CUSTOMER where cust_customer_id=%s"
+        db.cursor.execute(sql, (cust_id,))
+        res = db.cursor.fetchone()
+        use_corp_coupon = res['coupon_id']
+    use_coupon = data['coupon_id']
+    if len(use_coupon) != 0 and check_cust_type == True:
+        # Individual customer choose to use a coupon
+        sql = "Select coupon_type from SJD_COUPON where coupon_id=%s"
+        db.cursor.execute(sql, (use_coupon,))
+        ctype = db.cursor.fetchone()
+        if ctype['coupon_type'] == 'I':
+            # This is an individual coupon
+            sql = "Select expiration_date,start_date from SJD_IND_COUPON where coupon_id=%s"
+            db.cursor.execute(sql, (use_coupon))
+            res = db.cursor.fetchone()
+            check_date = compare_time(str(cur_date), str(
+                res['start_date']), str(res['expiration_date']))
+            # if check_date == True:
+            # Because this coupon is used, thus delete it from database
+            # db.delete_row("SJD_IND_COUPON","coupon_id = "+use_coupon)
+            # db.delete_row("SJD_COUPON","coupon_id = "+use_coupon)
+            if check_date == False:
+                use_coupon = "NULL"
+    else:
+        # Individual customer choose not to use a coupon
+        use_coupon = "NULL"
+
+    end_odometer = data['end_odometer']
+    sql = "Select * from SJD_NOT_FINISHED_ORDER where cust_customer_id = %s and vin = %s"
+    db.cursor.execute(sql, (cust_id, vin_val))
+    res = db.cursor.fetchone()
+    db.insert_row("SJD_ORDER", col_val)
+    sql = "Insert INTO sjd_not_finished_order (pickup_date,\
+            pickup_office_id,\
+            pickup_date,\
+            start_odometer,\
+            end_odometer,\
+            daily_odometer_limit),\
+            vin,\
+            dropoff_office_id,\
+            corp_coupon_id,\
+            ind_coupon_id,\
+            cust_customer_id)\
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+    try:
+        print(vin_val)
+        db.cursor.execute(sql, (str(res['pickup_date']), str(res['pickup_office_id']),
+                                str(cur_date), str(res['start_odometer']), end_odometer, str(
+                                    res['daily_odometer_limit']), vin_val,
+                                dropoff_office, str(use_corp_coupon), use_coupon, cust_id))
+    except Exception as ex:
+        print(ex)
+        db.conn.rollback()
+        message = {"Status": "400", "message": "Bad Data Insertion"}
+        resp = jsonify(message)
+        resp.status_code = 400
+        return resp
+    sql = "select count(*) from SJD_PAYMENT"
+    query_result = db.get_sql_res(sql)
+    pay_id = query_result[0]['count(*)'] + 1
+    pay_method = data['payment_method']
+    card_no = data['card_number']
+    sql = "Select invoice_id from SJD_NOT_FINISHED_ORDER where cust_customer_id = %s and vin = %s"
+    db.cursor.execute(sql, (cust_id, vin_val))
+    res = db.cursor.fetchone()
+    res = db.get_one("SJD_INVOICE", "invoice_id",
+                     "order_id = " + str(order_id))
+    col_data = [str(pay_id), "'" + str(cur_date) + "'",
+                pay_method, card_no, str(res['invoice_id'])]
+    col_val = ','.join(col_data)
+    last_id = db.insert_row("SJD_PAYMENT", col_val)
+    last_id = db.delete_row("SJD_NOT_FINISHED_ORDER",
+                            "cust_customer_id = " + cust_id + " and vin = " + vin_val)
+    return jsonify({'result': True})
