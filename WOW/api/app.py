@@ -355,15 +355,23 @@ def logout():
     return response
 
 
-@app.route('/Searchcar', method=['POST'])
+@app.route('/search-cars', methods=['POST'])
 def searchCar():
+    from decimal import Decimal
+
+    class DecimalEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, Decimal):
+                return str(obj)
+            return json.JSONEncoder.default(self, obj)
     data = request.get_json()
     className = data["class_name"]
-    officeID = data["officeID"]
-    sql = "SELECT * from sjd_veh_class join sjd_vehicles using (class_id) where class_name =%s and office_id=%s and available='Y'"
-    db.cursor.execute(sql, (className, officeID))
+    location = data["State"]
+    sql = "SELECT over_milage_fee,rental_rate,make,model,year from sjd_veh_class join sjd_vehicles using (class_id) join sjd_office using (office_id) where class_name =%s and add_state=%s and available='Y'"
+    db.cursor.execute(sql, (className, location))
     result = db.cursor.fetchall()
-    return jsonify(result)
+    print(result)
+    return json.dumps(result, cls=DecimalEncoder)
 
 
 @app.route('/Api/Dropoff', methods=['POST'])
@@ -489,3 +497,7 @@ def dropoff():
     last_id = db.delete_row("SJD_NOT_FINISHED_ORDER",
                             "cust_customer_id = " + cust_id + " and vin = " + vin_val)
     return jsonify({'result': True})
+
+
+if __name__ == '__main__':
+    app.run()
