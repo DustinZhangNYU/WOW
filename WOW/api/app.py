@@ -272,7 +272,7 @@ def generateSaltPassword(password):
     return hashed
 
 
-@app.route('/Pickup', methods=['POST'])
+@app.route('/review', methods=['POST'])
 @jwt_required()
 def pickup():
     data = request.get_json()
@@ -356,21 +356,6 @@ def fetch_customer():
 @app.route("/logout", methods=["POST"])
 @jwt_required()
 def logout():
-    jti = get_jwt()["jti"]
-    now = datetime.datetime.now(datetime.timezone.utc)
-    formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
-    sql = "INSERT INTO sjd_jwt_revoked_token (token_val,\
-        token_date) \
-        VALUES (%s,%s)"
-    try:
-        db.cursor.execute(sql, (jti, formatted_date))
-    except Exception as ex:
-        print(ex)
-        message = {"Status": "400", "message": "Bad Data Insertion"}
-        resp = jsonify(message)
-        resp.status_code = 400
-        return resp
-    db.conn.commit()
     response = jsonify({"msg": "logout successful"})
     unset_jwt_cookies(response)
     return response
