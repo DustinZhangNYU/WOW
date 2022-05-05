@@ -29,7 +29,7 @@ POST http://127.0.0.1:5000/register
 
 ```json
 {
-  "Email": "dustinzhangzzz@gmail.com",
+  "Email": "zxxcccc@yahoo.com",
   "Password": "zxxzjs2012!",
   "FirstName": "Dustin",
   "LastName": "Zhang",
@@ -43,7 +43,11 @@ POST http://127.0.0.1:5000/register
   "MiddleName": null,
   "Ins_company_name": "AAA",
   "Ins_pol_num": 12345,
-  "Zipcode": 11201
+  "Zipcode": 11201,
+  "Cust_type": "C",
+  "Corp_name": "Google",
+  "Regi_num": "G1K56324",
+  "Emp_id": "G112233"
 }
 ```
 
