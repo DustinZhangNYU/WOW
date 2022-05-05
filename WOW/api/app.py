@@ -173,10 +173,10 @@ def register():
     first_name = request_data['firstName']
     last_name = request_data["lastName"]
     password = request_data["password"]
-    mobile_phone = request_data["mobile Phone"]
-    dln = request_data["driver License Number"]  # Driver license number
+    mobile_phone = request_data["mobile_phone"]
+    dln = request_data["driver_license_number"]  # Driver license number
     street = request_data["street"]
-    unit = request_data["apt/Unit"]
+    unit = request_data["apt"]
     city = request_data["city"]
     state = request_data["state"]
     country = request_data["country"]
@@ -246,63 +246,63 @@ def register():
             regi_num = request_data["regi_num"]
             emp_id = request_data["emp_id"]
             sql = "Insert INTO sjd_corp_customer (cust_customer_id,\
-                corp_name, \ s
+                corp_name,\
                 regi_num,\
-                emp_id)
-                VALUES( % s, % s, % s, % s)"
-            parameters=(cust_id, corp_name, regi_num, emp_id)
+                emp_id)\
+                VALUES(%s,%s,%s,%s)"
+            parameters = (cust_id, corp_name, regi_num, emp_id)
             try:
                 db.cursor.execute(sql, parameters)
             except Exception as ex:
                 print(ex)
-                message={"Status": "400", "message": "Bad Data Insertion"}
-                resp=jsonify(message)
-                resp.status_code=400
+                message = {"Status": "400", "message": "Bad Data Insertion"}
+                resp = jsonify(message)
+                resp.status_code = 400
                 return resp
             db.conn.commit()
-        message={"Status": "200", "message": "Successfully Registered"}
-        resp=jsonify(message)
-        resp.status_code=200
+        message = {"Status": "200", "message": "Successfully Registered"}
+        resp = jsonify(message)
+        resp.status_code = 200
         return resp
 
 
 def generateSaltPassword(password):
-    salt=bcrypt.gensalt()
-    hashed=bcrypt.hashpw(password.encode(), salt)
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode(), salt)
     return hashed
 
 
-@app.route('/review', methods = ['POST'])
+@app.route('/review', methods=['POST'])
 @jwt_required()
 def pickup():
-    data=request.get_json()
-    vin_val=data['vin']
-    cust_id=get_jwt_identity()
-    select_col="available, office_id"
-    sql="select available, office_id from sjd_vehicles where vin=%s"
-    query=db.cursor.execute(sql, (vin_val,))
-    query_result=db.cursor.fetchone()
+    data = request.get_json()
+    vin_val = data['vin']
+    cust_id = get_jwt_identity()
+    select_col = "available, office_id"
+    sql = "select available, office_id from sjd_vehicles where vin=%s"
+    query = db.cursor.execute(sql, (vin_val,))
+    query_result = db.cursor.fetchone()
     if query_result != None and query_result['available'] == 'Y':
         # This car is available now
-        sql="Update sjd_vehicles set available = 'N' where vin=%s"
+        sql = "Update sjd_vehicles set available = 'N' where vin=%s"
         try:
             db.cursor.execute(sql, (vin_val,))
         except Exception as ex:
             print(ex)
             db.conn.rollback()
-            message={"Status": "400", "message": "Bad Data Updating"}
-            resp=jsonify(message)
-            resp.status_code=400
+            message = {"Status": "400", "message": "Bad Data Updating"}
+            resp = jsonify(message)
+            resp.status_code = 400
             return resp
-        pickup_office=query_result['office_id']
-        pickup_date=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        pickup_office = query_result['office_id']
+        pickup_date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         # Default start_odometers are zero
-        start_odometer=0
+        start_odometer = 0
 
-        daily_odometer_limit=500
+        daily_odometer_limit = 500
 
         # 用一张另外的 SJD_NOT_FINISHED_ORDER 表先暂时几下谁在哪里什么时候租了哪台车，这台车此时的start_odometers和这个待完成订单的daily_odometer_limit值
-        sql="Insert INTO sjd_not_finished_order (cust_customer_id,\
+        sql = "Insert INTO sjd_not_finished_order (cust_customer_id,\
             pickup_office_id,\
             pickup_date,\
             vin,\
@@ -316,17 +316,17 @@ def pickup():
         except Exception as ex:
             print(ex)
             db.conn.rollback()
-            message={"Status": "400", "message": "Bad Data Insertion"}
-            resp=jsonify(message)
-            resp.status_code=400
+            message = {"Status": "400", "message": "Bad Data Insertion"}
+            resp = jsonify(message)
+            resp.status_code = 400
             return resp
         db.conn.commit()
-        message={"Status": "200", "message": "Successfully Booked"}
-        resp=jsonify(message)
-        resp.status_code=200
+        message = {"Status": "200", "message": "Successfully Booked"}
+        resp = jsonify(message)
+        resp.status_code = 200
         return resp
     else:
-        message={"Status": "400",
+        message = {"Status": "400",
                    "message": "Car doesn't exist or already booked"}
         resp = jsonify(message)
         resp.status_code = 400
@@ -496,7 +496,7 @@ def dropoff():
     res = db.cursor.fetchone()
     res = db.get_one("SJD_INVOICE", "invoice_id",
                      "order_id = " + str(order_id))
-    col_data=[str(pay_id), "'" + str(cur_date) + "'",
+    col_data = [str(pay_id), "'" + str(cur_date) + "'",
                 pay_method, card_no, str(res['invoice_id'])]
     col_val = ','.join(col_data)
     last_id = db.insert_row("SJD_PAYMENT", col_val)
