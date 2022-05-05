@@ -29,25 +29,25 @@ POST http://127.0.0.1:5000/register
 
 ```json
 {
-  "Email": "zxxcccc@yahoo.com",
-  "Password": "zxxzjs2012!",
-  "FirstName": "Dustin",
-  "LastName": "Zhang",
-  "Mobile Phone": 6125320597,
-  "Driver License Number": "NB12550",
-  "Street": "Gold St",
-  "Apt/Unit": "608",
-  "City": "Brooklyn",
-  "State": "NY",
-  "Country": "USA",
-  "MiddleName": null,
-  "Ins_company_name": "AAA",
-  "Ins_pol_num": 12345,
-  "Zipcode": 11201,
-  "Cust_type": "C",
-  "Corp_name": "Google",
-  "Regi_num": "G1K56324",
-  "Emp_id": "G112233"
+  "email": "zxxcccc@yahoo.com",
+  "password": "zxxzjs2012!",
+  "firstName": "Dustin",
+  "lastName": "Zhang",
+  "mobile_phone": 6125320597,
+  "driver_license_number": "NB12550",
+  "street": "Gold St",
+  "apt": "608",
+  "city": "Brooklyn",
+  "state": "NY",
+  "country": "USA",
+  "middleName": null,
+  "ins_company_name": "AAA",
+  "ins_pol_num": 12345,
+  "zipcode": 11201,
+  "cust_type": "C",
+  "corp_name": "Google",
+  "regi_num": "G1K56324",
+  "emp_id": "G112233"
 }
 ```
 
