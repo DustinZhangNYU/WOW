@@ -1,7 +1,7 @@
 # To Install Packages:
 ```bash
 cd api
-pip install -r pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 # To run the demo:
 ```bash
