@@ -44,8 +44,9 @@ class SQLManager(object):
         self.conn = pool.get_conn()
         # self.conn = pymysql.connect(host = DB_CONFIG['host'],port = DB_CONFIG['port'],user = DB_CONFIG['user'],db = DB_CONFIG['db'],charset = DB_CONFIG['charset'])
         self.cursor = self.conn.cursor(cursor=pymysql.cursors.DictCursor)
-
+        self.conn.begin()
     # Fetch all rows from the select result
+
     def get_list(self, table_name, select_cols, where=None, args=None):
         if where != None and len(where) != 0:
             sql = "Select " + select_cols + " from " + table_name + " where " + where + ";"
@@ -344,8 +345,6 @@ def dropoff():
         ctype = db.cursor.fetchone()
         if ctype['coupon_type'] == 'I':
             # This is an individual coupon
-            res = db.get_one(
-                "SJD_IND_COUPON", "expiration_date,start_date", "coupon_id = " + use_coupon)
             sql = "Select expiration_date,start_date from SJD_IND_COUPON where coupon_id=%s"
             db.cursor.execute(sql, (use_coupon))
             res = db.cursor.fetchone()
@@ -381,8 +380,9 @@ def dropoff():
     try:
         print(vin_val)
         db.cursor.execute(sql, (str(res['pickup_date']), str(res['pickup_office_id']),
-        str(cur_date),str(res['start_odometer']),end_odometer,str(res['daily_odometer_limit']),vin_val,
-        dropoff_office, str(use_corp_coupon), use_coupon, cust_id))
+                                str(cur_date), str(res['start_odometer']), end_odometer, str(
+                                    res['daily_odometer_limit']), vin_val,
+                                dropoff_office, str(use_corp_coupon), use_coupon, cust_id))
     except Exception as ex:
         print(ex)
         db.conn.rollback()
