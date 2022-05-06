@@ -18,6 +18,7 @@ import time
 import pymysql
 import bcrypt
 from pymysqlpool.pool import Pool
+from flask_cors import CORS
 
 DB_CONFIG = {
     "pool_name": "wow_pool",
@@ -114,6 +115,7 @@ class SQLManager(object):
             #self.conn.close()
 
 app = Flask(__name__)
+CORS(app)
 app.config["JWT_SECRET_KEY"] = "sjd_tandon_2022_APDB"
 jwt = JWTManager(app)
 
