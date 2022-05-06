@@ -1571,28 +1571,37 @@ def dropoff():
 
 ###################### -- CUSTOMER SELECT THEIR PERSONAL INFORMATION -- ######################
 '''
-    Fetch customer's personal information, return value to front-end and display to user
+    Fetch individual customer's personal information, return value to front-end and display to user
     <where customer_id = ... --mandatory>
 '''
-@app.route("/user-profile")
+@app.route("/user-profile-ind")
 @jwt_required()
-def fetch_customer():
+def fetch_ind_customer():
     # Acquire a conn from pool
     db = SQLManager()
     db.connection()
     cust_id = get_jwt_identity()
-    sql = "Select cust_cust_type from sjd_customer where cust_customer_id=%s"
+    sql = "select * from sjd_customer join sjd_ind_customer using (cust_customer_id) where cust_customer_id=%s"
     db.cursor.execute(sql, (cust_id,))
-    res = db.cursor.fetchone()
-    query_result = None
-    if res['cust_cust_type'] == 'I':
-        sql = "select * from sjd_customer join sjd_ind_customer using (cust_customer_id) where cust_customer_id=%s"
-        db.cursor.execute(sql, (cust_id,))
-        query_result = db.cursor.fetchall()
-    if res['cust_cust_type'] == 'C':
-        sql = "select * from sjd_customer join sjd_corp_customer using (cust_customer_id) where cust_customer_id=%s"
-        db.cursor.execute(sql, (cust_id,))
-        query_result = db.cursor.fetchall()
+    query_result = db.cursor.fetchall()
+    db.conn.commit()
+    db.close()
+    return jsonify(query_result)
+
+'''
+    Fetch corporate customer's personal information, return value to front-end and display to user
+    <where customer_id = ... --mandatory>
+'''
+@app.route("/user-profile-corp")
+@jwt_required()
+def fetch_corp_customer():
+    # Acquire a conn from pool
+    db = SQLManager()
+    db.connection()
+    cust_id = get_jwt_identity()
+    sql = "select * from sjd_customer join sjd_corp_customer using (cust_customer_id) where cust_customer_id=%s"
+    db.cursor.execute(sql, (cust_id,))
+    query_result = db.cursor.fetchall()
     db.conn.commit()
     db.close()
     return jsonify(query_result)
