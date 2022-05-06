@@ -197,7 +197,7 @@ def register():
     state = request_data["add_state"]
     country = request_data["add_country"]
     zipcode = request_data["add_zipcode"]
-    ins_company_name = request_data["ins_company_name"]
+    ins_company_name = request_data["ins_com_name"]
     ins_pol_num = request_data["ins_pol_num"]
     middle_name = request_data["middle_name"]
     cust_type = request_data["cust_type"]
