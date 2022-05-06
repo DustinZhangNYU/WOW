@@ -803,18 +803,18 @@ def office_delete():
     This is delete SJD_CUSTOMER <where(...)---optional>
     Customer deletion is only based on customer_id column
 '''
-@app.route('/Api/DeleteCustomer', methods=['POST'])
+@app.route('/DeleteCustomer', methods=["DELETE"])
 def customer_delete():
     # According to the delete rule, need to delete corresponding record in IND_CUSTOMER or CORP_CUSTOMER first
     # Then delete it in CUSTOMER table
     condition_json = request.get_json()
     db = SQLManager()
     db.connection()
-    table_name = "SJD_CUSTOMER"
+    table_name = "sjd_customer"
     # Check customer type
     con_id = condition_json['cust_customer_id']
     select_col = "cust_cust_type"
-    where = "cust_customer_id = " + con_id
+    where = "cust_customer_id = " + str(con_id)
     query_result = db.get_one(table_name, select_col, where)
     # Delete IND_CUSTOMER
     if query_result != None and query_result['cust_cust_type'] == 'I':
@@ -824,7 +824,7 @@ def customer_delete():
             db.get_sql_res(sql)
             sql = "select * from sjd_customer for update;"
             db.get_sql_res(sql)
-            db.delete_row("SJD_IND_CUSTOMER", where)
+            db.delete_row("sjd_ind_customer", where)
         except Exception as ex:
             print(ex)
             db.conn.rollback()
@@ -841,7 +841,7 @@ def customer_delete():
             db.get_sql_res(sql)
             sql = "select * from sjd_customer for update;"
             db.get_sql_res(sql)
-            db.delete_row("SJD_CORP_CUSTOMER", where)
+            db.delete_row("sjd_corp_customer", where)
         except Exception as ex:
             print(ex)
             db.conn.rollback()

@@ -58,3 +58,11 @@ POST http://127.0.0.1:5000/search-cars
 ```json
 { "class_name": "SUV", "add_state": "FL" }
 ```
+
+## Delete Customer Test
+
+DELETE http://127.0.0.1:5000/DeleteCustomer
+
+```json
+{ "cust_customer_id": 35 }
+```
