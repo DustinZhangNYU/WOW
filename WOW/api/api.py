@@ -457,7 +457,7 @@ def payment_fetchall():
     Fetch c_id, over_m_f, rental_r, c_name from front-end
     Front-end use POST method send data to back-end api
 '''
-@app.route('/Api/InsertVehicleClass', methods=['POST'])
+@app.route('/insert-vehicle-class', methods=['POST'])
 def vehicle_class_insert():
     new_data = request.get_json()
     db = SQLManager()
@@ -467,7 +467,7 @@ def vehicle_class_insert():
     new_rental = new_data['rental_rate']
     new_name = new_data['class_name']
     try:
-        sql = "insert into SJD_VEH_CLASS values (%s,%s,%s)"
+        sql = "insert into sjd_veh_class values (%s,%s,%s)"
         db.cursor.execute(sql, (new_omf, new_rental, new_name))
         db.commit()
         db.close()
@@ -803,7 +803,7 @@ def office_delete():
     This is delete SJD_CUSTOMER <where(...)---optional>
     Customer deletion is only based on customer_id column
 '''
-@app.route('/DeleteCustomer', methods=["DELETE"])
+@app.route('/delete-customers', methods=["POST"])
 def customer_delete():
     # According to the delete rule, need to delete corresponding record in IND_CUSTOMER or CORP_CUSTOMER first
     # Then delete it in CUSTOMER table
@@ -1377,7 +1377,7 @@ def searchCar():
     Inter a vehicle's vin
 '''
 @app.route('/checkout', methods=['POST'])
-@jwt_required()
+# @jwt_required()
 def pickup():
     data = request.get_json()
     # Acquire a conn from pool
@@ -1385,8 +1385,8 @@ def pickup():
     db.connection()
     # Acquire a vehicle vin and customer id
     vin_val = data['vin']
-    cust_id = get_jwt_identity()
-
+    # cust_id = get_jwt_identity()
+    cust_id = 9
     # Acquire a X lock and Check available status
     sql = "select available, office_id from sjd_vehicles where vin=%s for update"
     db.cursor.execute(sql, (vin_val,))
