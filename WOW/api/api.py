@@ -467,7 +467,10 @@ def vehicle_class_insert():
     new_rental = new_data['rental_rate']
     new_name = new_data['class_name']
     try:
-        sql = "insert into sjd_veh_class values (%s,%s,%s)"
+        sql = "insert into sjd_veh_class (over_mileage_fee,\
+            rental_rate,\
+            class_name)\
+            values (%s,%s,%s)"
         db.cursor.execute(sql, (new_omf, new_rental, new_name))
         db.commit()
         db.close()
