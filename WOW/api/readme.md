@@ -41,7 +41,7 @@ POST http://127.0.0.1:5000/register
   "add_state": "NY",
   "add_country": "USA",
   "middle_name": null,
-  "ins_company_name": "AAA",
+  "ins_com_name": "AAA",
   "ins_pol_num": 12345,
   "add_zipcode": 11201,
   "cust_type": "C",
