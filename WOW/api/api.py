@@ -32,6 +32,7 @@ pool = Pool(host=DB_CONFIG['host'], port=DB_CONFIG['port'], user=DB_CONFIG['user
             min_size=1, max_size=10, timeout=30.0)
 pool.init()
 
+
 class SQLManager(object):
     def __init__(self):
         self.conn = None
@@ -40,61 +41,61 @@ class SQLManager(object):
     # Establish a MySQL connection
     def connection(self):
         self.conn = pool.get_conn()
-        self.cursor = self.conn.cursor(cursor = pymysql.cursors.DictCursor)
+        self.cursor = self.conn.cursor(cursor=pymysql.cursors.DictCursor)
         self.conn.begin()
 
     # Fetch all rows from the select result
-    def get_list(self,table_name,select_cols,where=None, args=None):
+    def get_list(self, table_name, select_cols, where=None, args=None):
         if where != None and len(where) != 0:
             sql = "Select " + select_cols + " from " + table_name + " where " + where + ";"
         else:
             sql = "Select " + select_cols + " from " + table_name + ";"
-        self.cursor.execute(sql,args)
+        self.cursor.execute(sql, args)
         result = self.cursor.fetchall()
         return result
 
     # Fetch only first row from select result
-    def get_one(self,table_name,select_cols,where=None, args=None):
+    def get_one(self, table_name, select_cols, where=None, args=None):
         if where != None and len(where) != 0:
             sql = "Select " + select_cols + " from " + table_name + " where " + where + ";"
         else:
             sql = "Select " + select_cols + " from " + table_name + ";"
-        self.cursor.execute(sql,args)
+        self.cursor.execute(sql, args)
         result = self.cursor.fetchone()
         return result
 
     # Update record and auto commit
-    def update_row(self,table_name,set,where=None,args=None):
+    def update_row(self, table_name, set, where=None, args=None):
         if where != None:
             sql = "Update " + table_name + " set " + set + " where " + where + ";"
         else:
             sql = "Update " + table_name + " set " + set + ";"
-        self.cursor.execute(sql,args)
-        #self.conn.commit()
+        self.cursor.execute(sql, args)
+        # self.conn.commit()
 
     # Insert record into table and auto commit, also fetch the primary key value of current last row
     # Cursor.insert_id() can fetch current inserted row's id value
-    def insert_row(self,table_name,col_value,args=None):
+    def insert_row(self, table_name, col_value, args=None):
         sql = "Insert into " + table_name + " values (" + col_value + ");"
         self.cursor.execute(sql, args)
-        #self.conn.commit()
+        # self.conn.commit()
         last_id = self.cursor.lastrowid
         return last_id
 
     # Delete record from table and auto commit, also fetch the primary key value of current last row
-    def delete_row(self,table_name,where=None,args=None):
-        if where != None and len(where)!=0:
+    def delete_row(self, table_name, where=None, args=None):
+        if where != None and len(where) != 0:
             sql = "Delete from " + table_name + " where " + where + ";"
         else:
             sql = "Delete from " + table_name + ";"
-        self.cursor.execute(sql,args)
-        #self.conn.commit()
+        self.cursor.execute(sql, args)
+        # self.conn.commit()
         #last_id = self.cursor.lastrowid
-        #return last_id
+        # return last_id
 
     # Execute any kind of sql line such as JOIN ...
-    def get_sql_res(self,sql,args=None):
-        self.cursor.execute(sql,args)
+    def get_sql_res(self, sql, args=None):
+        self.cursor.execute(sql, args)
         result = self.cursor.fetchall()
         return result
 
@@ -104,14 +105,15 @@ class SQLManager(object):
     def rollback(self):
         self.conn.rollback()
 
-
     # Close MySQL connection
+
     def close(self):
         if self.cursor != None:
             self.cursor.close()
         if self.conn != None:
             pool.release(self.conn)
-            #self.conn.close()
+            # self.conn.close()
+
 
 app = Flask(__name__)
 app.config["JWT_SECRET_KEY"] = "sjd_tandon_2022_APDB"
@@ -126,12 +128,50 @@ jwt = JWTManager(app)
 #     print(token is None)
 #     return False
 
+
 @app.route('/')
 def hello_world():
     return "<p>Hello, World!</p>"
 
 
 ###################### -- LOGIN REGISTER LOGOUT MODULE -- ######################
+@app.route('/login-emp', methods=["POST"])
+def loginEmp():
+    db = SQLManager()
+    db.connection()
+    employee_account = request.json.get("employee_account", None)
+    password = request.json.get("emlpoyee_password", None)
+    sql = "select emlpoyee_password from sjd_employee where employee_account=%s"
+    query = db.cursor.execute(sql, (employee_account,))
+    query_result = db.cursor.fetchone()
+    if query_result == None:
+        message = {"Status": "400", "message": "Account Not Found"}
+        resp = jsonify(message)
+        resp.status_code = 400
+        print("Email Not Found")
+        db.conn.rollback()
+        db.close()
+        return resp
+    passwordFromDB = query_result["emlpoyee_password"]
+    if password != passwordFromDB:
+        message = {"Status": "400", "message": "Incorrect Password"}
+        resp = jsonify(message)
+        resp.status_code = 400
+        db.conn.rollback()
+        db.close()
+        return resp
+    else:
+        access_token = create_access_token(
+            identity=employee_account, fresh=True)
+        message = {"Status": "200", "message": "Employee Successfully Login!",
+                   "access_token": access_token}
+        resp = jsonify(message)
+        resp.status_code = 200
+        print("Successfully Login!")
+        db.conn.commit()
+        db.close()
+        return resp
+
 
 @app.route('/login', methods=["POST"])
 def login():
@@ -170,8 +210,10 @@ def login():
         db.close()
         return resp
 
+
 def verifyPassword(hashedPassword, password):
     return bcrypt.checkpw(password.encode(), hashedPassword.encode())
+
 
 @app.route('/register', methods=["POST"])
 def register():
@@ -264,28 +306,30 @@ def register():
                 regi_num,\
                 emp_id)\
                 VALUES( %s, %s, %s, %s)"
-            parameters=(cust_id, corp_name, regi_num, emp_id)
+            parameters = (cust_id, corp_name, regi_num, emp_id)
             try:
                 db.cursor.execute(sql, parameters)
             except Exception as ex:
                 print(ex)
-                message={"Status": "400", "message": "Bad Data Insertion"}
-                resp=jsonify(message)
-                resp.status_code=400
+                message = {"Status": "400", "message": "Bad Data Insertion"}
+                resp = jsonify(message)
+                resp.status_code = 400
                 db.conn.rollback()
                 db.close()
                 return resp
         db.conn.commit()
         db.close()
-        message={"Status": "200", "message": "Successfully Registered"}
-        resp=jsonify(message)
-        resp.status_code=200
+        message = {"Status": "200", "message": "Successfully Registered"}
+        resp = jsonify(message)
+        resp.status_code = 200
         return resp
+
 
 def generateSaltPassword(password):
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password.encode(), salt)
     return hashed
+
 
 @app.route("/logout", methods=["POST"])
 @jwt_required()
@@ -311,9 +355,10 @@ def logout():
 def vehicle_class_fetchall():
     db = SQLManager()
     db.connection()
-    query_result = db.get_list('SJD_VEH_CLASS','*')
+    query_result = db.get_list('SJD_VEH_CLASS', '*')
     db.close()
     return jsonify(query_result)
+
 
 '''
     WOW employee or customer fetch all vehicle information
@@ -323,9 +368,10 @@ def vehicle_class_fetchall():
 def vehicle_fetchall():
     db = SQLManager()
     db.connection()
-    query_result = db.get_list('SJD_VEHICLES','*')
+    query_result = db.get_list('SJD_VEHICLES', '*')
     db.close()
     return jsonify(query_result)
+
 
 '''
     WOW employee or customer fetch all office information
@@ -335,9 +381,10 @@ def vehicle_fetchall():
 def office_fetchall():
     db = SQLManager()
     db.connection()
-    query_result = db.get_list('SJD_OFFICE','*')
+    query_result = db.get_list('SJD_OFFICE', '*')
     db.close()
     return jsonify(query_result)
+
 
 '''
     WOW employee fetch all order information
@@ -347,9 +394,10 @@ def office_fetchall():
 def order_fetchall():
     db = SQLManager()
     db.connection()
-    query_result = db.get_list('SJD_ORDER','*')
+    query_result = db.get_list('SJD_ORDER', '*')
     db.close()
     return jsonify(query_result)
+
 
 '''
     WOW employee fetch all individual customer information
@@ -365,6 +413,7 @@ def ind_cust_fetchall():
     db.close()
     return jsonify(query_result)
 
+
 '''
     WOW employee fetch all corporate customer information
     This is select * from SJD_CORP_CUSTOMER
@@ -378,6 +427,7 @@ def corp_cust_fetchall():
     query_result = db.get_sql_res(sql)
     db.close()
     return jsonify(query_result)
+
 
 '''
     WOW employee fetch all individual coupon information
@@ -393,6 +443,7 @@ def ind_coupon_fetchall():
     db.close()
     return jsonify(query_result)
 
+
 '''
     WOW employee fetch all corporate coupon information
     This is select * from SJD_CORP_COUPON
@@ -407,6 +458,7 @@ def corp_coupon_fetchall():
     db.close()
     return jsonify(query_result)
 
+
 '''
     WOW employee fetch all invoice information
     This is select * from SJD_INVOICE
@@ -415,9 +467,10 @@ def corp_coupon_fetchall():
 def invoice_fetchall():
     db = SQLManager()
     db.connection()
-    query_result = db.get_list('SJD_INVOICE','*')
+    query_result = db.get_list('SJD_INVOICE', '*')
     db.close()
     return jsonify(query_result)
+
 
 '''
     WOW employee fetch all payment information
@@ -427,9 +480,10 @@ def invoice_fetchall():
 def payment_fetchall():
     db = SQLManager()
     db.connection()
-    query_result = db.get_list('SJD_PAYMENT','*')
+    query_result = db.get_list('SJD_PAYMENT', '*')
     db.close()
     return jsonify(query_result)
+
 
 ###################### -- EMPLOYEE  INSERT -- ######################
 '''
@@ -438,7 +492,7 @@ def payment_fetchall():
     Fetch c_id, over_m_f, rental_r, c_name from front-end
     Front-end use POST method send data to back-end api
 '''
-@app.route('/Api/InsertVehicleClass',methods=['POST'])
+@app.route('/Api/InsertVehicleClass', methods=['POST'])
 def vehicle_class_insert():
     new_data = request.get_json()
     db = SQLManager()
@@ -449,7 +503,7 @@ def vehicle_class_insert():
     new_name = new_data['class_name']
     try:
         sql = "insert into SJD_VEH_CLASS values (%s,%s,%s)"
-        db.cursor.execute(sql,(new_omf,new_rental,new_name))
+        db.cursor.execute(sql, (new_omf, new_rental, new_name))
         db.commit()
         db.close()
         message = {"Status": "200", "message": "Successfully Inserted"}
@@ -465,11 +519,12 @@ def vehicle_class_insert():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee add a new vehicle record
     This is insert into SJD_VEHICLES value(...)
 '''
-@app.route('/Api/InsertVehicle',methods=['POST'])
+@app.route('/Api/InsertVehicle', methods=['POST'])
 def vehicle_insert():
     new_data = request.get_json()
     db = SQLManager()
@@ -487,7 +542,8 @@ def vehicle_insert():
         db.get_sql_res(sql)
         # Insert new record
         sql = "insert into sjd_vehicles values(%s,%s,%s,%s,%s,%s,%s)"
-        db.cursor.execute(sql, (new_make, new_model, new_year, new_vin, new_plt, new_cid, new_office))
+        db.cursor.execute(sql, (new_make, new_model, new_year,
+                                new_vin, new_plt, new_cid, new_office))
         db.commit()
         db.close()
         message = {"Status": "200", "message": "Successfully Inserted"}
@@ -503,11 +559,12 @@ def vehicle_insert():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee add a new office record
     This is insert into SJD_OFFICE value(...)
 '''
-@app.route('/Api/InsertOffice',methods=['POST'])
+@app.route('/Api/InsertOffice', methods=['POST'])
 def office_insert():
     new_data = request.get_json()
     db = SQLManager()
@@ -517,12 +574,13 @@ def office_insert():
     new_st = new_data['add_state']
     new_str = new_data['add_street']
     new_unit = new_data['add_unit']
-    new_zip =  new_data['add_zipcode']
+    new_zip = new_data['add_zipcode']
     new_ph = new_data['phone_number']
-    new_ci =  new_data['add_city']
+    new_ci = new_data['add_city']
     try:
         sql = "insert into SJD_OFFICE values(%s,%s,%s,%s,%s,%s,%s)"
-        db.cursor.execute(sql,(new_cou,new_st,new_str,new_unit,new_zip,new_ph,new_ci))
+        db.cursor.execute(sql, (new_cou, new_st, new_str,
+                                new_unit, new_zip, new_ph, new_ci))
         db.commit()
         db.close()
         message = {"Status": "200", "message": "Successfully Inserted"}
@@ -538,11 +596,12 @@ def office_insert():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee add a new coupon record
     This is insert into SJD_COUPON value(...)
 '''
-@app.route('/Api/InsertCoupon',methods=['POST'])
+@app.route('/Api/InsertCoupon', methods=['POST'])
 def coupon_insert():
     # Also need to insert SJD_IND_COUPON or SJD_CORP_COUPON in this function
     new_data = request.get_json()
@@ -553,7 +612,7 @@ def coupon_insert():
     new_type = new_data['coupon_type']
     try:
         sql = "insert into SJD_COUPON values (%s,%s)"
-        db.cursor.execute(sql,(new_am,new_type))
+        db.cursor.execute(sql, (new_am, new_type))
         new_id = db.cursor.lastrowid
     except Exception as ex:
         print(ex)
@@ -570,7 +629,7 @@ def coupon_insert():
         new_start = new_data['start_date']
         try:
             sql = "insert into SJD_IND_COUPON values (%s,%s,%s)"
-            db.cursor.execute(sql,(new_id,new_exp,new_start))
+            db.cursor.execute(sql, (new_id, new_exp, new_start))
         except Exception as ex:
             print(ex)
             db.conn.rollback()
@@ -585,7 +644,7 @@ def coupon_insert():
         new_company = new_data['company_name']
         try:
             sql = "insert into SJD_CORP_COUPON values (%s,%s)"
-            db.cursor.execute(sql,(new_id,new_company))
+            db.cursor.execute(sql, (new_id, new_company))
             db.commit()
             db.close()
             message = {"Status": "200", "message": "Successfully Inserted"}
@@ -601,13 +660,14 @@ def coupon_insert():
             resp.status_code = 400
             return resp
 
+
 ###################### -- EMPLOYEE  DELETE -- ######################
 '''
     WOW employee delete a vehicle class
     This is delete SJD_VEH_CLASS <where(...)---optional>
     Fetch con_id, con_omf,con_rental,con_name from front-end
 '''
-@app.route('/Api/DeleteVehicleClass',methods=['POST'])
+@app.route('/Api/DeleteVehicleClass', methods=['POST'])
 def vehicle_class_delete():
     condition_json = request.get_json()
     db = SQLManager()
@@ -631,7 +691,7 @@ def vehicle_class_delete():
         condition.append("class_name = " + con_name)
     where = ' and '.join(condition)
     try:
-        db.delete_row(table_name,where)
+        db.delete_row(table_name, where)
         db.commit()
         db.close()
         message = {"Status": "200", "message": "Successfully Deleted"}
@@ -647,11 +707,12 @@ def vehicle_class_delete():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee delete a vehicle
     This is delete SJD_VEHICLE <where(...)---optional>
 '''
-@app.route('/Api/DeleteVehicle',methods=['POST'])
+@app.route('/Api/DeleteVehicle', methods=['POST'])
 def vehicle_delete():
     condition_json = request.get_json()
     db = SQLManager()
@@ -690,7 +751,7 @@ def vehicle_delete():
         condition.append("office_id = " + con_office)
     where = ' and '.join(condition)
     try:
-        db.delete_row(table_name,where)
+        db.delete_row(table_name, where)
         db.commit()
         db.close()
         message = {"Status": "200", "message": "Successfully Deleted"}
@@ -706,11 +767,12 @@ def vehicle_delete():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee delete an office
     This is delete SJD_OFFICE <where(...)---optional>
 '''
-@app.route('/Api/DeleteOffice',methods=['POST'])
+@app.route('/Api/DeleteOffice', methods=['POST'])
 def office_delete():
     condition_json = request.get_json()
     db = SQLManager()
@@ -754,7 +816,7 @@ def office_delete():
         condition.append("add_city = " + con_city)
     where = ' and '.join(condition)
     try:
-        db.delete_row(table_name,where)
+        db.delete_row(table_name, where)
         db.commit()
         db.close()
         message = {"Status": "200", "message": "Successfully Deleted"}
@@ -770,12 +832,13 @@ def office_delete():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee delete a customer
     This is delete SJD_CUSTOMER <where(...)---optional>
     Customer deletion is only based on customer_id column
 '''
-@app.route('/Api/DeleteCustomer',methods=['POST'])
+@app.route('/Api/DeleteCustomer', methods=['POST'])
 def customer_delete():
     # According to the delete rule, need to delete corresponding record in IND_CUSTOMER or CORP_CUSTOMER first
     # Then delete it in CUSTOMER table
@@ -787,7 +850,7 @@ def customer_delete():
     con_id = condition_json['cust_customer_id']
     select_col = "cust_cust_type"
     where = "cust_customer_id = " + con_id
-    query_result = db.get_one(table_name,select_col,where)
+    query_result = db.get_one(table_name, select_col, where)
     # Delete IND_CUSTOMER
     if query_result != None and query_result['cust_cust_type'] == 'I':
         try:
@@ -824,7 +887,7 @@ def customer_delete():
             return resp
     # Delete CUSTOMER
     try:
-        db.delete_row(table_name,where)
+        db.delete_row(table_name, where)
         db.commit()
         db.close()
         message = {"Status": "200", "message": "Successfully Deleted"}
@@ -841,12 +904,13 @@ def customer_delete():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee delete a coupon
     This is delete SJD_COUPON <where(...)---optional>
     Coupon deletion is only based on coupon_id column
 '''
-@app.route('/Api/DeleteCoupon',methods=['POST'])
+@app.route('/Api/DeleteCoupon', methods=['POST'])
 def coupon_delete():
     # According to the delete rule, need to delete corresponding record in IND_COUPON or CORP_COUPON first
     # Then delete it in COUPON table
@@ -858,7 +922,7 @@ def coupon_delete():
     con_id = condition_json['coupon_id']
     select_col = "coupon_type"
     where = "coupon_id = " + con_id
-    query_result = db.get_one(table_name,select_col,where)
+    query_result = db.get_one(table_name, select_col, where)
     # Delete IND_COUPON
     if query_result != None and query_result['coupon_type'] == 'I':
         try:
@@ -895,7 +959,7 @@ def coupon_delete():
             return resp
     # Delete COUPON
     try:
-        db.delete_row(table_name,where)
+        db.delete_row(table_name, where)
         db.commit()
         db.close()
         message = {"Status": "200", "message": "Successfully Deleted"}
@@ -911,6 +975,7 @@ def coupon_delete():
         resp.status_code = 400
         return resp
 
+
 ###################### -- EMPLOYEE  UPDATE -- ######################
 '''
     WOW employee update vehicle class information
@@ -918,7 +983,7 @@ def coupon_delete():
     But not support update class_id value(PK)
     Update only based on class_id
 '''
-@app.route('/Api/UpdateVehicleClass',methods=['POST'])
+@app.route('/Api/UpdateVehicleClass', methods=['POST'])
 def vehicle_class_update():
     update_json = request.get_json()
     db = SQLManager()
@@ -942,9 +1007,10 @@ def vehicle_class_update():
     try:
         if len(set) != 0:
             # Acquire a lock
-            sql = "select * from sjd_veh_class where class_id = {} for update;".format(con_id)
+            sql = "select * from sjd_veh_class where class_id = {} for update;".format(
+                con_id)
             db.get_sql_res(sql)
-            db.update_row(table_name,set,where)
+            db.update_row(table_name, set, where)
             db.commit()
             db.close()
             message = {"Status": "200", "message": "Successfully Updated"}
@@ -954,7 +1020,8 @@ def vehicle_class_update():
         else:
             db.commit()
             db.close()
-            message = {"Status": "400", "message": "No data need to be updated"}
+            message = {"Status": "400",
+                       "message": "No data need to be updated"}
             resp = jsonify(message)
             resp.status_code = 400
             return resp
@@ -967,13 +1034,14 @@ def vehicle_class_update():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee update vehicle information
     This is update SJD_VEHICLE set ... <where ... -optional>
     But not support update primary key column
     Update only based on vin
 '''
-@app.route('/Api/UpdateVehicle',methods=['POST'])
+@app.route('/Api/UpdateVehicle', methods=['POST'])
 def vehicle_update():
     update_json = request.get_json()
     db = SQLManager()
@@ -1002,7 +1070,7 @@ def vehicle_update():
         # Update FK, Check if it exists in parent table
         select_col = "*"
         select_where = "class_id = " + new_cid
-        query_result = db.get_one("SJD_VEH_CLASS",select_col,select_where)
+        query_result = db.get_one("SJD_VEH_CLASS", select_col, select_where)
         # Exist
         if query_result != None:
             set = "class_id=" + new_cid
@@ -1010,7 +1078,7 @@ def vehicle_update():
         # Update FK, Check if it exists in parent table
         select_col = "*"
         select_where = "office_id = " + new_office
-        query_result = db.get_one("SJD_OFFICE",select_col,select_where)
+        query_result = db.get_one("SJD_OFFICE", select_col, select_where)
         # Exist
         if query_result != None:
             set = "office_id=" + new_office
@@ -1021,9 +1089,10 @@ def vehicle_update():
     try:
         if len(set) != 0:
             # Acquire a lock
-            sql = "select * from sjd_vehicles where vin = {} for update;".format(con_vin)
+            sql = "select * from sjd_vehicles where vin = {} for update;".format(
+                con_vin)
             db.get_sql_res(sql)
-            db.update_row(table_name,set,where)
+            db.update_row(table_name, set, where)
             db.commit()
             db.close()
             message = {"Status": "200", "message": "Successfully Updated"}
@@ -1033,7 +1102,8 @@ def vehicle_update():
         else:
             db.commit()
             db.close()
-            message = {"Status": "400", "message": "No data need to be updated"}
+            message = {"Status": "400",
+                       "message": "No data need to be updated"}
             resp = jsonify(message)
             resp.status_code = 400
             return resp
@@ -1046,13 +1116,14 @@ def vehicle_update():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee update office information
     This is update SJD_OFFICE set ... <where ... -optional>
     But not support update primary key column
     Update only based on office_id
 '''
-@app.route('/Api/UpdateOffice',methods=['POST'])
+@app.route('/Api/UpdateOffice', methods=['POST'])
 def office_update():
     update_json = request.get_json()
     db = SQLManager()
@@ -1094,9 +1165,10 @@ def office_update():
     try:
         if len(set) != 0:
             # Acquire a lock
-            sql = "select * from sjd_office where office_id = {} for update;".format(con_id)
+            sql = "select * from sjd_office where office_id = {} for update;".format(
+                con_id)
             db.get_sql_res(sql)
-            db.update_row(table_name,set,where)
+            db.update_row(table_name, set, where)
             db.commit()
             db.close()
             message = {"Status": "200", "message": "Successfully Updated"}
@@ -1106,7 +1178,8 @@ def office_update():
         else:
             db.commit()
             db.close()
-            message = {"Status": "400", "message": "No data need to be updated"}
+            message = {"Status": "400",
+                       "message": "No data need to be updated"}
             resp = jsonify(message)
             resp.status_code = 400
             return resp
@@ -1119,13 +1192,14 @@ def office_update():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee update coupon information
     This is update SJD_COUPON set ... <where ... -optional>
     But not support update primary key column
     Update only based on coupon_id
 '''
-@app.route('/Api/UpdateCoupon',methods=['POST'])
+@app.route('/Api/UpdateCoupon', methods=['POST'])
 def coupon_update():
     update_json = request.get_json()
     db = SQLManager()
@@ -1137,7 +1211,7 @@ def coupon_update():
     set = ""
     if len(new_amount) != 0:
         set = "discount_amount=" + new_amount
-    elif len(new_type) != 0 and new_type in ['C','I']:
+    elif len(new_type) != 0 and new_type in ['C', 'I']:
         new_type = "'" + new_type + "'"
         set = "coupon_type=" + new_type
 
@@ -1148,9 +1222,10 @@ def coupon_update():
     try:
         if len(set) != 0:
             # Acquire a lock
-            sql = "select * from sjd_coupon where coupon_id = {} for update;".format(con_id)
+            sql = "select * from sjd_coupon where coupon_id = {} for update;".format(
+                con_id)
             db.get_sql_res(sql)
-            db.update_row(table_name,set,where)
+            db.update_row(table_name, set, where)
             db.commit()
             db.close()
             message = {"Status": "200", "message": "Successfully Updated"}
@@ -1160,7 +1235,8 @@ def coupon_update():
         else:
             db.commit()
             db.close()
-            message = {"Status": "400", "message": "No data need to be updated"}
+            message = {"Status": "400",
+                       "message": "No data need to be updated"}
             resp = jsonify(message)
             resp.status_code = 400
             return resp
@@ -1173,13 +1249,14 @@ def coupon_update():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee update individual coupon information
     This is update SJD_IND_COUPON set ... <where ... -optional>
     But not support update primary key column
     Update only based on coupon_id
 '''
-@app.route('/Api/UpdateIndCoupon',methods=['POST'])
+@app.route('/Api/UpdateIndCoupon', methods=['POST'])
 def ind_coupon_update():
     update_json = request.get_json()
     db = SQLManager()
@@ -1201,9 +1278,10 @@ def ind_coupon_update():
     try:
         if len(set) != 0:
             # Acquire a lock
-            sql = "select * from sjd_ind_coupon where coupon_id = {} for update;".format(con_id)
+            sql = "select * from sjd_ind_coupon where coupon_id = {} for update;".format(
+                con_id)
             db.get_sql_res(sql)
-            db.update_row(table_name,set,where)
+            db.update_row(table_name, set, where)
             db.commit()
             db.close()
             message = {"Status": "200", "message": "Successfully Updated"}
@@ -1213,7 +1291,8 @@ def ind_coupon_update():
         else:
             db.commit()
             db.close()
-            message = {"Status": "400", "message": "No data need to be updated"}
+            message = {"Status": "400",
+                       "message": "No data need to be updated"}
             resp = jsonify(message)
             resp.status_code = 400
             return resp
@@ -1226,13 +1305,14 @@ def ind_coupon_update():
         resp.status_code = 400
         return resp
 
+
 '''
     WOW employee update corporate coupon information
     This is update SJD_CORP_COUPON set ... <where ... -optional>
     But not support update primary key column
     Update only based on coupon_id
 '''
-@app.route('/Api/UpdateCorpCoupon',methods=['POST'])
+@app.route('/Api/UpdateCorpCoupon', methods=['POST'])
 def corp_coupon_update():
     update_json = request.get_json()
     db = SQLManager()
@@ -1250,9 +1330,10 @@ def corp_coupon_update():
     try:
         if len(set) != 0:
             # Acquire a lock
-            sql = "select * from sjd_corp_coupon where coupon_id = {} for update;".format(con_id)
+            sql = "select * from sjd_corp_coupon where coupon_id = {} for update;".format(
+                con_id)
             db.get_sql_res(sql)
-            db.update_row(table_name,set,where)
+            db.update_row(table_name, set, where)
             db.commit()
             db.close()
             message = {"Status": "200", "message": "Successfully Updated"}
@@ -1262,7 +1343,8 @@ def corp_coupon_update():
         else:
             db.commit()
             db.close()
-            message = {"Status": "400", "message": "No data need to be updated"}
+            message = {"Status": "400",
+                       "message": "No data need to be updated"}
             resp = jsonify(message)
             resp.status_code = 400
             return resp
@@ -1274,6 +1356,7 @@ def corp_coupon_update():
         resp = jsonify(message)
         resp.status_code = 400
         return resp
+
 
 '''
  <WOW Back-end Version 2.0,  Add interaction with front-end>
@@ -1289,6 +1372,7 @@ def corp_coupon_update():
 @app.route('/search-cars', methods=['POST'])
 def searchCar():
     from decimal import Decimal
+
     class DecimalEncoder(json.JSONEncoder):
         def default(self, obj):
             if isinstance(obj, Decimal):
@@ -1307,11 +1391,12 @@ def searchCar():
     db.close()
     return json.dumps(result, cls=DecimalEncoder)
 
+
 '''
     WOW customers rent a car
     Inter a vehicle's vin
 '''
-@app.route('/review', methods = ['POST'])
+@app.route('/review', methods=['POST'])
 @jwt_required()
 def pickup():
     data = request.get_json()
@@ -1360,7 +1445,7 @@ def pickup():
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)"
         try:
             db.cursor.execute(sql, (cust_id, str(pickup_office), str(
-                pickup_date), vin_val, str(start_odometer), daily_odometer_limit,payment_method,card_numer,coupon_id))
+                pickup_date), vin_val, str(start_odometer), daily_odometer_limit, payment_method, card_numer, coupon_id))
         except Exception as ex:
             print(ex)
             db.conn.rollback()
@@ -1384,10 +1469,13 @@ def pickup():
         db.close()
         return resp
 
+
 '''
     Check if individual coupon is valid
     If l_time is in [start_t,end_t]
 '''
+
+
 def compare_time(l_time, start_t, end_t):
     s_time = time.mktime(time.strptime(start_t, '%Y-%m-%d %H:%M:%S'))
     e_time = time.mktime(time.strptime(end_t, '%Y-%m-%d %H:%M:%S'))
@@ -1395,6 +1483,7 @@ def compare_time(l_time, start_t, end_t):
     if (float(log_time) >= float(s_time)) and (float(log_time) <= float(e_time)):
         return True
     return False
+
 
 '''
     WOW customers return a car and pay for the service
@@ -1432,7 +1521,8 @@ def dropoff():
     cur_date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     # Acquire a lock
-    sql = "select * from sjd_vehicles where vin = {} for update".format(vin_val)
+    sql = "select * from sjd_vehicles where vin = {} for update".format(
+        vin_val)
     db.get_sql_res(sql)
 
     # Update vehicle to be available
@@ -1542,7 +1632,8 @@ def dropoff():
             invoice_id,\
             VALUES (%s,%s,%s,%s)"
     try:
-        db.cursor.execute(sql, (str(cur_date),pay_method,card_no,str(res['invoice_id'])))
+        db.cursor.execute(sql, (str(cur_date), pay_method,
+                                card_no, str(res['invoice_id'])))
     except Exception as ex:
         print(ex)
         db.conn.rollback()
@@ -1553,12 +1644,13 @@ def dropoff():
         return resp
     sql = "Delete from SJD_NOT_FINISHED_ORDER where cust_customer_id = %s and vin = %s"
     try:
-        db.cursor.execute(sql,(cust_id,vin_val))
+        db.cursor.execute(sql, (cust_id, vin_val))
     except Exception as ex:
         print(ex)
         db.conn.rollback()
         db.close()
-        message = {"Status": "400", "message": "Bad NOT FINISHED ORDER Deletion"}
+        message = {"Status": "400",
+                   "message": "Bad NOT FINISHED ORDER Deletion"}
         resp = jsonify(message)
         resp.status_code = 400
         return resp
@@ -1568,6 +1660,7 @@ def dropoff():
     resp = jsonify(message)
     resp.status_code = 200
     return resp
+
 
 ###################### -- CUSTOMER SELECT THEIR PERSONAL INFORMATION -- ######################
 '''
@@ -1597,6 +1690,7 @@ def fetch_customer():
     db.close()
     return jsonify(query_result)
 
+
 '''
     Fetch customer's coupons
     <where customer_id = ... --mandatory>
@@ -1616,10 +1710,10 @@ def fetch_coupon():
 
     if res['cust_cust_type'] == 'C':
         sql = "select coupon_id from SJD_CORP_CUSTOMER where cust_customer_id = %s"
-        db.cursor.execute(sql,(cust_id,))
+        db.cursor.execute(sql, (cust_id,))
         res = db.cursor.fetchone()
         sql = "select * from SJD_CORP_COUPON join SJD_COUPON using (coupon_id) where coupon_id = %s"
-        db.cursor.execute(sql,(str(res['coupon_id']),))
+        db.cursor.execute(sql, (str(res['coupon_id']),))
         query_result = db.cursor.fetchall()
         db.conn.commit()
         db.close()
@@ -1628,6 +1722,7 @@ def fetch_coupon():
         db.conn.commit()
         db.close()
         return None
+
 
 '''
     Fetch all invoices of customer
@@ -1641,13 +1736,13 @@ def fetch_invoice():
     cust_id = get_jwt_identity()
 
     sql = "select order_id from SJD_ORDER where cust_customer_id = %s"
-    db.cursor.execute(sql,(cust_id,))
+    db.cursor.execute(sql, (cust_id,))
     orders = db.cursor.fetchall()
     invoices = []
-    for i,row in enumerate(orders):
+    for i, row in enumerate(orders):
         cur_order_id = row['order_id']
         sql = "select * from SJD_INVOICE where order_id = %s"
-        db.cursor.execute(sql,(cur_order_id,))
+        db.cursor.execute(sql, (cur_order_id,))
         invoice = db.cursor.fetchone()
         invoices.append(invoice)
     if len(invoices) == 0:
@@ -1657,6 +1752,7 @@ def fetch_invoice():
     db.commit()
     db.close()
     return jsonify(invoices)
+
 
 '''
     Fetch all payment history of customer
@@ -1670,17 +1766,17 @@ def fetch_payment():
 
     cust_id = get_jwt_identity()
     sql = "select order_id from SJD_ORDER where cust_customer_id = %s"
-    db.cursor.execute(sql,(cust_id,))
+    db.cursor.execute(sql, (cust_id,))
     orders = db.cursor.fetchall()
 
     payments = []
-    for i,row in enumerate(orders):
+    for i, row in enumerate(orders):
         cur_order_id = row['order_id']
         sql = "select * from SJD_INVOICE where order_id = %s"
-        db.cursor.execute(sql,(str(cur_order_id),))
+        db.cursor.execute(sql, (str(cur_order_id),))
         invoice = db.cursor.fetchone()
         sql = "select * from SJD_PAYMENT where invoice_id = %s"
-        db.cursor.execute(sql,(str(invoice['invoice_id']),))
+        db.cursor.execute(sql, (str(invoice['invoice_id']),))
         cur_payments = db.cursor.fetchall()
         for p in cur_payments:
             payments.append(p)
@@ -1691,6 +1787,7 @@ def fetch_payment():
     db.commit()
     db.close()
     return jsonify(payments)
+
 
 '''
     Fetch customer's order history
@@ -1703,17 +1800,18 @@ def fetch_order():
     db.connection()
     cust_id = get_jwt_identity()
     sql = "select * from SJD_ORDER where cust_customer_id = %s"
-    db.cursor.execute(sql,(cust_id,))
+    db.cursor.execute(sql, (cust_id,))
     orders = db.cursor.fetchall()
     db.close()
     return jsonify(orders)
+
 
 ###################### -- CUSTOMER UPDATE THEIR PERSONAL INFORMATION -- ######################
 '''
     Update customer's personal information
     This is update customer/ind_customer/corp_customer set ... <where customer_id = ... --mandatory>
 '''
-@app.route('/Api/UpdateCustomer',methods=['POST'])
+@app.route('/Api/UpdateCustomer', methods=['POST'])
 @jwt_required()
 def personal_cust_update():
     update_json = request.get_json()
@@ -1752,19 +1850,20 @@ def personal_cust_update():
     elif len(new_ph) != 0:
         new_ph = "'" + new_ph + "'"
         set = "cust_phone_number=" + new_ph
-    elif len(new_type) != 0 and new_type in ['C','I']:
+    elif len(new_type) != 0 and new_type in ['C', 'I']:
         new_type = "'" + new_type + "'"
         set = "cust_cust_type=" + new_type
     elif len(new_city) != 0:
         new_city = "'" + new_city + "'"
         set = "cust_add_city=" + new_city
 
-    con_id =  get_jwt_identity()
+    con_id = get_jwt_identity()
     if len(con_id) == 0:
         # Fail, because this customer doesn't input customer_id
         db.commit()
         db.close()
-        message = {"Status": "400", "message": "Please provide your customer ID"}
+        message = {"Status": "400",
+                   "message": "Please provide your customer ID"}
         resp = jsonify(message)
         resp.status_code = 400
         return resp
@@ -1773,7 +1872,7 @@ def personal_cust_update():
     # This means that a customer want to update an attribute in SJD_CUSTOMER
     if len(set) != 0:
         try:
-            db.update_row("SJD_CUSTOMER",set,where)
+            db.update_row("SJD_CUSTOMER", set, where)
         except Exception as ex:
             print(ex)
             db.conn.rollback()
@@ -1790,7 +1889,8 @@ def personal_cust_update():
         resp.status_code = 200
         return resp
 
-    res = db.get_one("SJD_CUSTOMER", "cust_cust_type", "cust_customer_id = " + con_id)
+    res = db.get_one("SJD_CUSTOMER", "cust_cust_type",
+                     "cust_customer_id = " + con_id)
     if res['cust_cust_type'] == 'I':
         new_lastn = update_json['last_name']
         new_firstn = update_json['first_name']
@@ -1841,11 +1941,13 @@ def personal_cust_update():
         new_emp_id = update_json['emp_id']
         if len(new_corp_name) != 0:
             new_corp_name = "'" + new_corp_name + "'"
-            res = db.get_one("SJD_CORP_COUPON","*","company_name = "+new_corp_name)
+            res = db.get_one("SJD_CORP_COUPON", "*",
+                             "company_name = "+new_corp_name)
             if res != None:
                 new_coupon = res['coupon_id']
                 try:
-                    db.update_row("SJD_CORP_CUSTOMER","coupon_id = "+str(new_coupon),where)
+                    db.update_row("SJD_CORP_CUSTOMER",
+                                  "coupon_id = "+str(new_coupon), where)
                 except Exception as ex:
                     print(ex)
                     db.conn.rollback()
@@ -1859,7 +1961,8 @@ def personal_cust_update():
                 # Updated corporate name doesn't exist in database
                 db.commit()
                 db.close()
-                message = {"Status": "400", "message": "Corporate name doesn't exist"}
+                message = {"Status": "400",
+                           "message": "Corporate name doesn't exist"}
                 resp = jsonify(message)
                 resp.status_code = 400
                 return resp
@@ -1890,8 +1993,8 @@ def personal_cust_update():
     # This means that a corporate customer want to update an attribute in SJD_IND_CUSTOMER or an individual customer want to update an attribute in SJD_CORP_CUSTOMER
     db.commit()
     db.close()
-    message = {"Status": "400", "message": "Updated Error: Incorrect customer type"}
+    message = {"Status": "400",
+               "message": "Updated Error: Incorrect customer type"}
     resp = jsonify(message)
     resp.status_code = 400
     return resp
-
