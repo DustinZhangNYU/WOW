@@ -91,7 +91,7 @@ class SQLManager(object):
             sql = "Delete from " + table_name + ";"
         self.cursor.execute(sql, args)
         # self.conn.commit()
-        #last_id = self.cursor.lastrowid
+        # last_id = self.cursor.lastrowid
         # return last_id
 
     # Execute any kind of sql line such as JOIN ...
@@ -1349,12 +1349,27 @@ def searchCar():
     db.connection()
     className = data["class_name"]
     location = data["add_state"]
-    sql = "SELECT vin,over_mileage_fee,rental_rate,make,model,year from sjd_veh_class join sjd_vehicles using (class_id) join sjd_office using (office_id) where class_name =%s and add_state=%s and available='Y'"
+    sql = "SELECT add_state, phone_number,add_street, add_unit, add_zipcode,vin,over_mileage_fee,rental_rate,make,model,year from sjd_veh_class join sjd_vehicles using (class_id) join sjd_office using (office_id) where class_name =%s and add_state=%s and available='Y'"
     db.cursor.execute(sql, (className, location))
     result = db.cursor.fetchall()
     db.conn.commit()
     db.close()
-    return json.dumps(result, cls=DecimalEncoder)
+    jsobj = []
+    for x in result:
+        street = x["add_street"]
+        unit = x["add_unit"]
+        zipcode = x["add_zipcode"]
+        state = x["add_state"]
+        phone = x["phone_number"]
+        vin = x["vin"]
+        over_mileage_fee = x["over_mileage_fee"]
+        add = street + ',' + unit + ',' + state + ',' + zipcode
+        rental_rate = x["rental_rate"]
+        make = x["make"]
+        model = x["model"]
+        jsobj.append({"pickup_address": add, "phone_number": phone, "vin": vin,
+                      "over_mileage_fee": over_mileage_fee, "rental_rate": rental_rate, "make": make, "model": model})
+    return json.dumps(jsobj, cls=DecimalEncoder)
 
 
 '''
