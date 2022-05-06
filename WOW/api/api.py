@@ -492,7 +492,7 @@ def vehicle_class_insert():
     WOW employee add a new vehicle record
     This is insert into SJD_VEHICLES value(...)
 '''
-@app.route('/Api/InsertVehicle', methods=['POST'])
+@app.route('/insert-vehicle', methods=['POST'])
 def vehicle_insert():
     new_data = request.get_json()
     db = SQLManager()
@@ -509,7 +509,14 @@ def vehicle_insert():
         sql = "select * from sjd_vehicles for update;"
         db.get_sql_res(sql)
         # Insert new record
-        sql = "insert into sjd_vehicles values(%s,%s,%s,%s,%s,%s,%s)"
+        sql = "insert into sjd_vehicles (make,\
+            model,\
+            year,\
+            vin,\
+            lic_plt_num,\
+            class_id,\
+            office_id)\
+            values(%s,%s,%s,%s,%s,%s,%s)"
         db.cursor.execute(sql, (new_make, new_model, new_year,
                                 new_vin, new_plt, new_cid, new_office))
         db.commit()
@@ -1478,16 +1485,17 @@ def compare_time(l_time, start_t, end_t):
     Delete corresponding record in SJD_NOT_FINISHED_ORDER table
     Update Payment table
 '''
-@app.route('/Api/Dropoff', methods=['POST'])
-@jwt_required()
+@app.route('/dropoff-order', methods=['POST'])
+# @jwt_required()
 def dropoff():
     # Acquire a conn from pool
     db = SQLManager()
     db.connection()
 
     data = request.get_json()
-    cust_id = get_jwt_identity()
-    sql = "Select vin from SJD_NOT_FINISHED_ORDER where cust_customer_id=%s"
+    cust_id = data["cust_customer_id"]
+    # cust_id = get_jwt_identity()
+    sql = "Select vin from sjd_not_finished_order where cust_customer_id=%s"
     try:
         db.cursor.execute(sql, (cust_id,))
     except Exception as ex:
@@ -1504,12 +1512,11 @@ def dropoff():
     cur_date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     # Acquire a lock
-    sql = "select * from sjd_vehicles where vin = {} for update".format(
-        vin_val)
-    db.get_sql_res(sql)
+    sql = "select * from sjd_vehicles where vin = %s for update"
+    db.cursor.execute(sql,(vin_val,))
 
     # Update vehicle to be available
-    sql = "Update SJD_VEHICLES set available='Y' where vin=%s"
+    sql = "Update sjd_vehicles set available='Y' where vin=%s"
     try:
         db.cursor.execute(sql, (vin_val,))
     except Exception as ex:
@@ -1522,9 +1529,9 @@ def dropoff():
         return resp
     # Modify vehicle's office id to be current dropoff location
     dropoff_office = data['dropoff_office_id']
-    sql = "Update SJD_VEHICLES set dropoff_office=%s where vin=%s"
+    sql = "Update sjd_vehicles set office_id=%s where vin=%s"
     try:
-        db.cursor.execute(sql, (vin_val, vin_val))
+        db.cursor.execute(sql, (dropoff_office, vin_val))
     except Exception as ex:
         print(ex)
         db.conn.rollback()
@@ -1535,54 +1542,54 @@ def dropoff():
         return resp
 
     # Acquire information from "not_finished_order" table
-    sql = "Select * from SJD_NOT_FINISHED_ORDER where cust_customer_id = %s and vin = %s"
+    sql = "Select * from sjd_not_finished_order where cust_customer_id = %s and vin = %s"
     db.cursor.execute(sql, (cust_id, vin_val))
     order_res = db.cursor.fetchone()
 
     # If this is a corporate type customer, then cannot use individual coupon, True: I, False: C
     # Corporate user will use company coupon automatically
-    use_corp_coupon = "NULL"
+    use_corp_coupon = None
     check_cust_type = True
-    sql = "Select cust_cust_type from SJD_CUSTOMER where cust_customer_id=%s"
+    sql = "Select cust_cust_type from sjd_customer where cust_customer_id=%s"
     db.cursor.execute(sql, (cust_id,))
     res = db.cursor.fetchone()
     if res['cust_cust_type'] == 'C':
         check_cust_type = False
-        sql = "Select coupon_id from SJD_CORP_CUSTOMER where cust_customer_id=%s"
+        sql = "Select coupon_id from sjd_corp_customer where cust_customer_id=%s"
         db.cursor.execute(sql, (cust_id,))
         res = db.cursor.fetchone()
         use_corp_coupon = res['coupon_id']
     use_coupon = order_res['coupon_id']
-    if len(use_coupon) != 0 and check_cust_type == True:
+    if len(str(use_coupon)) != 0 and check_cust_type == True:
         # Individual customer choose to use a coupon
-        sql = "Select coupon_type from SJD_COUPON where coupon_id=%s"
+        sql = "Select coupon_type from sjd_coupon where coupon_id=%s"
         db.cursor.execute(sql, (use_coupon,))
         ctype = db.cursor.fetchone()
-        if ctype['coupon_type'] == 'I':
+        if ctype != None and ctype['coupon_type'] == 'I':
             # This is an individual coupon
-            sql = "Select expiration_date,start_date from SJD_IND_COUPON where coupon_id=%s for update"
+            sql = "Select expiration_date,start_date from sjd_ind_coupon where coupon_id=%s for update"
             db.cursor.execute(sql, (use_coupon,))
             res = db.cursor.fetchone()
             check_date = compare_time(str(cur_date), str(
                 res['start_date']), str(res['expiration_date']))
             if check_date == True:
-                sql = "Update SJD_IND_COUPON set expiration_date = '1995-09-01'"
+                sql = "Update sjd_ind_coupon set expiration_date = '1995-09-01'"
                 db.cursor.execute(sql, None)
             if check_date == False:
                 use_coupon = "NULL"
     else:
         # Individual customer choose not to use a coupon
-        use_coupon = "NULL"
+        use_coupon = None
 
     end_odometer = data['end_odometer']
     order_id = 'NULL'
 
     sql = "Insert INTO sjd_order (pickup_date,\
             pickup_office_id,\
-            pickup_date,\
+            dropoff_date,\
             start_odometer,\
             end_odometer,\
-            daily_odometer_limit),\
+            daily_odometer_limit,\
             vin,\
             dropoff_office_id,\
             corp_coupon_id,\
@@ -1593,7 +1600,7 @@ def dropoff():
         db.cursor.execute(sql, (str(order_res['pickup_date']), str(order_res['pickup_office_id']),
                                 str(cur_date), str(order_res['start_odometer']), end_odometer, str(
                                     order_res['daily_odometer_limit']), vin_val,
-                                dropoff_office, str(use_corp_coupon), use_coupon, cust_id))
+                                dropoff_office, use_corp_coupon, use_coupon, cust_id))
         new_order_id = db.cursor.lastrowid
     except Exception as ex:
         print(ex)
@@ -1606,7 +1613,7 @@ def dropoff():
 
     pay_method = order_res['payment_method']
     card_no = order_res['card_number']
-    sql = "Select invoice_id from SJD_INVOICE where order_id = %s"
+    sql = "Select invoice_id from sjd_invoice where order_id = %s"
     db.cursor.execute(sql, (new_order_id,))
     res = db.cursor.fetchone()
     sql = "Insert INTO sjd_payment (payment_date,\
@@ -1625,7 +1632,7 @@ def dropoff():
         resp = jsonify(message)
         resp.status_code = 400
         return resp
-    sql = "Delete from SJD_NOT_FINISHED_ORDER where cust_customer_id = %s and vin = %s"
+    sql = "Delete from sjd_not_finished_order where cust_customer_id = %s and vin = %s"
     try:
         db.cursor.execute(sql, (cust_id, vin_val))
     except Exception as ex:
