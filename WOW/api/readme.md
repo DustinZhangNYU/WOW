@@ -56,5 +56,5 @@ POST http://127.0.0.1:5000/register
 POST http://127.0.0.1:5000/search-cars
 
 ```json
-{ "class_name": "SUV", "State": "FL" }
+{ "class_name": "SUV", "add_state": "FL" }
 ```
