@@ -1361,7 +1361,7 @@ def searchCar():
     WOW customers rent a car
     Inter a vehicle's vin
 '''
-@app.route('/review', methods=['POST'])
+@app.route('/checkout', methods=['POST'])
 @jwt_required()
 def pickup():
     data = request.get_json()
