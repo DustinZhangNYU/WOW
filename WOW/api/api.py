@@ -1348,7 +1348,7 @@ def searchCar():
     db = SQLManager()
     db.connection()
     className = data["class_name"]
-    location = data["State"]
+    location = data["add_state"]
     sql = "SELECT over_mileage_fee,rental_rate,make,model,year from sjd_veh_class join sjd_vehicles using (class_id) join sjd_office using (office_id) where class_name =%s and add_state=%s and available='Y'"
     db.cursor.execute(sql, (className, location))
     result = db.cursor.fetchall()
