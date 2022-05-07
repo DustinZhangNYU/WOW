@@ -1565,6 +1565,9 @@ def dropoff():
         sql = "Select coupon_type from sjd_coupon where coupon_id=%s"
         db.cursor.execute(sql, (use_coupon,))
         ctype = db.cursor.fetchone()
+        if ctype == None:
+            use_coupon = None
+        print(ctype)
         if ctype != None and ctype['coupon_type'] == 'I':
             # This is an individual coupon
             sql = "Select expiration_date,start_date from sjd_ind_coupon where coupon_id=%s for update"
@@ -1576,11 +1579,12 @@ def dropoff():
                 sql = "Update sjd_ind_coupon set expiration_date = '1995-09-01'"
                 db.cursor.execute(sql, None)
             if check_date == False:
-                use_coupon = "NULL"
+                use_coupon = None
+        else:
+            use_coupon = None
     else:
         # Individual customer choose not to use a coupon
         use_coupon = None
-
     end_odometer = data['end_odometer']
     order_id = 'NULL'
 
@@ -1597,11 +1601,22 @@ def dropoff():
             cust_customer_id)\
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
     try:
+        print(use_coupon)
+        print(use_corp_coupon)
         db.cursor.execute(sql, (str(order_res['pickup_date']), str(order_res['pickup_office_id']),
                                 str(cur_date), str(order_res['start_odometer']), end_odometer, str(
                                     order_res['daily_odometer_limit']), vin_val,
                                 dropoff_office, use_corp_coupon, use_coupon, cust_id))
-        new_order_id = db.cursor.lastrowid
+        # sql = "select order_id from sjd_order where pickup_date = %s and pickup_office_id=%s and dropoff_date=%s and \
+        # end_odometer=%s and vin = %s and dropoff_office_id = %s and cust_customer_id = %s"
+
+        # db.cursor.execute(sql,(str(order_res['pickup_date']), str(order_res['pickup_office_id']),
+        #                         str(cur_date), end_odometer, vin_val,
+        #                         dropoff_office, cust_id))
+        # res = db.cursor.fetchone()
+        # print(res)
+        # new_order_id = res['order_id']
+
     except Exception as ex:
         print(ex)
         db.conn.rollback()
@@ -1613,17 +1628,21 @@ def dropoff():
 
     pay_method = order_res['payment_method']
     card_no = order_res['card_number']
-    sql = "Select invoice_id from sjd_invoice where order_id = %s"
-    db.cursor.execute(sql, (new_order_id,))
+    # sql = "Select invoice_id from sjd_invoice where order_id = %s"
+    # db.cursor.execute(sql, (new_order_id,))
+    # res = db.cursor.fetchone()
+    sql = "select count(*) from sjd_invoice"
+    db.cursor.execute(sql,None)
     res = db.cursor.fetchone()
+    new_invoice_id = res['count(*)']
     sql = "Insert INTO sjd_payment (payment_date,\
             payment_method,\
             card_number,\
-            invoice_id,\
+            invoice_id)\
             VALUES (%s,%s,%s,%s)"
     try:
         db.cursor.execute(sql, (str(cur_date), pay_method,
-                                card_no, str(res['invoice_id'])))
+                                card_no, new_invoice_id))
     except Exception as ex:
         print(ex)
         db.conn.rollback()
