@@ -63,6 +63,16 @@ POST http://127.0.0.1:5000/search-cars
 { "class_name": "Luxury Car", "add_state": "NY" }
 ```
 
+## Checkout Test
+```json
+{ 
+"vin":"1HGBH41JXMN109107",
+"payment_method": "PayPal",
+"card_number": "222",
+"coupon_id": "222"
+ }
+```
+
 ## Delete Customer Test
 
 DELETE http://127.0.0.1:5000/DeleteCustomer
